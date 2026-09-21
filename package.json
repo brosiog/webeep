@@ -10,7 +10,7 @@
     "start": "node src/server.js",
     "mock": "BEEPER_MODE=mock node src/server.js",
     "test": "node --test",
-    "lint": "node --check src/*.js test/*.js"
+    "lint": "node --check src/*.js test/*.js public/*.js"
   },
   "dependencies": {
     "@beeper/desktop-api": "^5.0.0"

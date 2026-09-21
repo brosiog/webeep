@@ -13,7 +13,7 @@ function reactionProjection(reaction, senderLabelByID = new Map()) {
   return projected;
 }
 
-function messageProjection(message, chatTitle = '', senderLabelByID = new Map(), fallbackSender = '', onAssetURL) {
+function messageProjection(message, { chatTitle = '', senderLabelByID = new Map(), fallbackSender = '', onAssetURL } = {}) {
   const attachments = (message.attachments ?? []).map((attachment) => {
     const projected = {
       assetURL: attachment.id ?? attachment.srcURL ?? '',
@@ -86,11 +86,11 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
       const fallbackSender = chat.type === 'single' ? chat.title : '';
       // The bridge echoes each reaction as a standalone REACTION message; those are
       // hidden here because reactions already surface as chips on the target message.
-      return page.items.filter((message) => message.type !== 'REACTION').slice(-limit).map((message) => messageProjection(message, '', senderLabelByID, fallbackSender, trackAssetURL));
+      return page.items.filter((message) => message.type !== 'REACTION').slice(-limit).map((message) => messageProjection(message, { senderLabelByID, fallbackSender, onAssetURL: trackAssetURL }));
     },
     async search(query, limit) {
       const page = await client.messages.search({ query, limit });
-      return page.items.filter((message) => message.type !== 'REACTION').slice(0, limit).map((message) => messageProjection(message, '', undefined, '', trackAssetURL));
+      return page.items.filter((message) => message.type !== 'REACTION').slice(0, limit).map((message) => messageProjection(message, { onAssetURL: trackAssetURL }));
     },
     async serveAsset(url) {
       return client.assets.serve({ url });
@@ -128,6 +128,13 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
   };
 }
 
+function inferAttachmentType(mimeType) {
+  if (mimeType.startsWith('image/')) return 'img';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  return 'file';
+}
+
 /** Deterministic local fixture; it never opens a network connection. */
 export function createMockService() {
   const chats = [{ id: 'chat-1', title: 'Family', type: 'group', unreadCount: 2, preview: 'Dinner at six?' }];
@@ -138,6 +145,12 @@ export function createMockService() {
     { id: 'message-4', chatId: 'chat-1', sender: 'Cronjob Bot', text: 'Cronjob Response: Regal Mystery Monday movie<br>(job_id: 812d1dd2a500)<br><br><strong>Regal Mystery Movie — Monday, September 21, 2026</strong><br>• <strong>PG-13</strong>, <strong>1h 41m</strong><br><a href="https://www.regmovies.com/movies/heart-of-the-beast-ho00021867">https://www.regmovies.com/movies/heart-of-the-beast-ho00021867</a>', timestamp: '2026-09-20T12:03:00.000Z' },
   ];
   let nextId = 1;
+  const notFound = () => Object.assign(new Error('not_found'), { status: 404 });
+  const findMessage = (chatId, messageId) => {
+    const message = messages.find((item) => item.chatId === chatId && item.id === messageId);
+    if (!message) throw notFound();
+    return message;
+  };
   return {
     async listChats() { return chats; },
     async getUnreadCount() { return chats.reduce((total, chat) => total + chat.unreadCount, 0); },
@@ -154,7 +167,7 @@ export function createMockService() {
         const bytes = Buffer.from(attachment.data, 'base64');
         message.attachments = [{
           assetURL: `localmxc://mock/${id}`,
-          type: attachment.mimeType.startsWith('image/') ? 'img' : attachment.mimeType.startsWith('video/') ? 'video' : attachment.mimeType.startsWith('audio/') ? 'audio' : 'file',
+          type: inferAttachmentType(attachment.mimeType),
           fileName: attachment.fileName,
           mimeType: attachment.mimeType,
           fileSize: bytes.byteLength,
@@ -178,8 +191,7 @@ export function createMockService() {
       };
     },
     async sendReaction({ chatId, messageId, emoji }) {
-      const message = messages.find((item) => item.chatId === chatId && item.id === messageId);
-      if (!message) throw Object.assign(new Error('not_found'), { status: 404 });
+      const message = findMessage(chatId, messageId);
       message.reactions ??= [];
       if (!message.reactions.some((reaction) => reaction.key === emoji && reaction.participant === 'You')) {
         message.reactions.push({ key: emoji, participant: 'You' });
@@ -187,8 +199,7 @@ export function createMockService() {
       return { chatId, messageId, emoji };
     },
     async removeReaction({ chatId, messageId, emoji }) {
-      const message = messages.find((item) => item.chatId === chatId && item.id === messageId);
-      if (!message) throw Object.assign(new Error('not_found'), { status: 404 });
+      const message = findMessage(chatId, messageId);
       message.reactions = (message.reactions ?? []).filter((reaction) => !(reaction.key === emoji && reaction.participant === 'You'));
       return { chatId, messageId, emoji };
     },

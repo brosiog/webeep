@@ -16,47 +16,6 @@ const refreshButton = document.querySelector('#refresh-button');
 const sendButton = document.querySelector('.send-button');
 const addButton = document.querySelector('.add-button');
 const fileInput = document.querySelector('#file-input');
-const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
-let pendingAttachment = null;
-const attachBar = document.createElement('div');
-attachBar.className = 'reply-bar';
-attachBar.hidden = true;
-sendForm.before(attachBar);
-
-function renderAttachBar() {
-  attachBar.replaceChildren();
-  if (!pendingAttachment) {
-    attachBar.hidden = true;
-    return;
-  }
-  const label = document.createElement('span');
-  label.className = 'reply-bar-label';
-  label.textContent = '📎 Attached';
-  const quote = document.createElement('span');
-  quote.className = 'reply-bar-quote';
-  quote.textContent = `${pendingAttachment.file.name} (${formatFileSize(pendingAttachment.file.size)})`;
-  const cancel = document.createElement('button');
-  cancel.type = 'button';
-  cancel.className = 'reply-bar-cancel';
-  cancel.textContent = '✕';
-  cancel.setAttribute('aria-label', 'Remove attachment');
-  cancel.addEventListener('click', () => {
-    pendingAttachment = null;
-    fileInput.value = '';
-    renderAttachBar();
-  });
-  attachBar.append(label, quote, cancel);
-  attachBar.hidden = false;
-}
-
-function readFileAsBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',', 2)[1] ?? '');
-    reader.onerror = () => reject(new Error('read_failed'));
-    reader.readAsDataURL(file);
-  });
-}
 const inboxButton = document.querySelector('#inbox-button');
 const contactsButton = document.querySelector('#contacts-button');
 const inboxView = document.querySelector('#inbox-view');
@@ -66,13 +25,14 @@ const contactsStatus = document.querySelector('#contacts-status');
 const notifyButton = document.querySelector('#notify-button');
 const toastStack = document.querySelector('#toast-stack');
 
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+const POLL_INTERVAL_MS = 10_000;
+const REACTION_EMOJIS = ['❤️', '👍', '👎', '😂', '😮', '😢', '🙏', '🎉'];
+
 let selectedChat = null;
 let replyTarget = null;
+let pendingAttachment = null;
 let threadPinnedToBottom = true;
-const replyBar = document.createElement('div');
-replyBar.className = 'reply-bar';
-replyBar.hidden = true;
-sendForm.before(replyBar);
 let chatsById = new Map();
 let numbersByChatId = new Map();
 let displayedMessageSignature = '';
@@ -100,19 +60,14 @@ function refreshNotifyButton() {
     return;
   }
   notifyButton.hidden = false;
-  if (Notification.permission === 'denied') {
-    notifyButton.textContent = '🔕';
-    notifyButton.setAttribute('aria-label', 'Notifications blocked — allow them in your browser site settings');
-    notifyButton.title = 'Notifications blocked — allow them in your browser site settings';
-  } else if (notificationsActive()) {
-    notifyButton.textContent = '🔔';
-    notifyButton.setAttribute('aria-label', 'Turn off notifications');
-    notifyButton.title = 'Turn off notifications';
-  } else {
-    notifyButton.textContent = '🔕';
-    notifyButton.setAttribute('aria-label', 'Turn on notifications');
-    notifyButton.title = 'Turn on notifications';
-  }
+  const state = Notification.permission === 'denied'
+    ? { icon: '🔕', label: 'Notifications blocked — allow them in your browser site settings' }
+    : notificationsActive()
+      ? { icon: '🔔', label: 'Turn off notifications' }
+      : { icon: '🔕', label: 'Turn on notifications' };
+  notifyButton.textContent = state.icon;
+  notifyButton.setAttribute('aria-label', state.label);
+  notifyButton.title = state.label;
 }
 
 function setNotificationsArmed(armed) {
@@ -139,8 +94,7 @@ function showToast(chat, message, count) {
   toast.addEventListener('click', () => {
     window.clearTimeout(dismiss);
     toast.remove();
-    showInbox();
-    loadThread(chatsById.get(chat.id) ?? chat);
+    openChat(chat);
   });
   toastStack.append(toast);
 }
@@ -169,8 +123,7 @@ async function notifyForChat(chat) {
       notification.onclick = () => {
         window.focus();
         notification.close();
-        showInbox();
-        loadThread(chatsById.get(chat.id) ?? chat);
+        openChat(chat);
       };
     } catch {
       // OS-level delivery failed; the toast and title badge still surface it.
@@ -178,8 +131,15 @@ async function notifyForChat(chat) {
   }
   if (!document.hidden) showToast(chat, newest, fresh.length);
 }
-const POLL_INTERVAL_MS = 10_000;
-const REACTION_EMOJIS = ['❤️', '👍', '👎', '😂', '😮', '😢', '🙏', '🎉'];
+
+const attachBar = document.createElement('div');
+attachBar.className = 'reply-bar';
+attachBar.hidden = true;
+sendForm.before(attachBar);
+const replyBar = document.createElement('div');
+replyBar.className = 'reply-bar';
+replyBar.hidden = true;
+sendForm.before(replyBar);
 
 async function request(path, options) {
   const response = await fetch(path, options);
@@ -208,10 +168,7 @@ function renderChats(chats) {
     if (chat.id === selectedChat?.id) button.classList.add('is-selected');
     button.dataset.chatId = chat.id;
     button.addEventListener('click', () => loadThread(chat));
-    const avatar = document.createElement('span');
-    avatar.className = 'chat-avatar';
-    avatar.textContent = (chat.title || 'U').trim().charAt(0).toUpperCase();
-    avatar.setAttribute('aria-hidden', 'true');
+    const avatar = makeAvatar(chat.title);
     const copy = document.createElement('span');
     copy.className = 'chat-copy';
     const title = document.createElement('span');
@@ -225,7 +182,7 @@ function renderChats(chats) {
     if (chat.unreadCount) {
       const unread = document.createElement('span');
       unread.className = 'chat-unread';
-      unread.textContent = chat.unreadCount > 99 ? '99+' : chat.unreadCount;
+      unread.textContent = formatCount(chat.unreadCount);
       button.append(unread);
     }
     item.append(button);
@@ -239,10 +196,7 @@ function renderContacts(contacts) {
   for (const contact of contacts) {
     const item = document.createElement('li');
     item.className = 'contact-card';
-    const avatar = document.createElement('span');
-    avatar.className = 'chat-avatar';
-    avatar.textContent = (contact.name || contact.number).charAt(0).toUpperCase();
-    avatar.setAttribute('aria-hidden', 'true');
+    const avatar = makeAvatar(contact.name || contact.number);
     const copy = document.createElement('div');
     copy.className = 'contact-copy';
     const number = document.createElement('span');
@@ -316,34 +270,84 @@ function messageSignature(messages) {
   return messages.map((message) => `${message.id}:${message.timestamp}:${message.sender}:${message.text}:${message.replyToMessageId ?? ''}:${(message.reactions ?? []).map((reaction) => `${reaction.key}=${reaction.participant}`).join(',')}`).join('|');
 }
 
-function snippet(text, max = 120) {
-  return plainTextSnippet(text, max);
-}
-
-function setReplyTarget(target) {
-  replyTarget = target;
-  replyBar.replaceChildren();
-  if (!target) {
-    replyBar.hidden = true;
-    return;
-  }
+function renderPreviewBar(bar, { labelText, quoteText, cancelLabel, onCancel }) {
+  bar.replaceChildren();
   const label = document.createElement('span');
   label.className = 'reply-bar-label';
-  label.textContent = `Replying to ${target.sender}`;
+  label.textContent = labelText;
   const quote = document.createElement('span');
   quote.className = 'reply-bar-quote';
-  quote.textContent = snippet(target.text) || '(no text)';
+  quote.textContent = quoteText;
   const cancel = document.createElement('button');
   cancel.type = 'button';
   cancel.className = 'reply-bar-cancel';
   cancel.textContent = '✕';
-  cancel.setAttribute('aria-label', 'Cancel reply');
-  cancel.addEventListener('click', () => {
-    setReplyTarget(null);
-    messageInput.focus();
+  cancel.setAttribute('aria-label', cancelLabel);
+  cancel.addEventListener('click', onCancel);
+  bar.append(label, quote, cancel);
+  bar.hidden = false;
+}
+
+function renderAttachBar() {
+  if (!pendingAttachment) {
+    attachBar.replaceChildren();
+    attachBar.hidden = true;
+    return;
+  }
+  renderPreviewBar(attachBar, {
+    labelText: '📎 Attached',
+    quoteText: `${pendingAttachment.file.name} (${formatFileSize(pendingAttachment.file.size)})`,
+    cancelLabel: 'Remove attachment',
+    onCancel: () => {
+      pendingAttachment = null;
+      fileInput.value = '';
+      renderAttachBar();
+    },
   });
-  replyBar.append(label, quote, cancel);
-  replyBar.hidden = false;
+}
+
+function setReplyTarget(target) {
+  replyTarget = target;
+  if (!target) {
+    replyBar.replaceChildren();
+    replyBar.hidden = true;
+    return;
+  }
+  renderPreviewBar(replyBar, {
+    labelText: `Replying to ${target.sender}`,
+    quoteText: plainTextSnippet(target.text) || '(no text)',
+    cancelLabel: 'Cancel reply',
+    onCancel: () => {
+      setReplyTarget(null);
+      messageInput.focus();
+    },
+  });
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',', 2)[1] ?? '');
+    reader.onerror = () => reject(new Error('read_failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function makeAvatar(text) {
+  const avatar = document.createElement('span');
+  avatar.className = 'chat-avatar';
+  avatar.textContent = (text || 'U').trim().charAt(0).toUpperCase();
+  avatar.setAttribute('aria-hidden', 'true');
+  return avatar;
+}
+
+function formatCount(total) {
+  return total > 99 ? '99+' : total;
+}
+
+function openChat(chat) {
+  showInbox();
+  loadThread(chatsById.get(chat.id) ?? chat);
 }
 
 function scrollToMessage(messageId) {
@@ -418,7 +422,7 @@ function renderReactionChips(message, chatId) {
     chip.addEventListener('click', async () => {
       chip.disabled = true;
       try {
-        await unreactToMessage(chatId, messageIdOf(message), key);
+        await unreactToMessage(chatId, message.id, key);
       } catch {
         chip.disabled = false;
         setStatus(threadStatus, 'Unable to remove that reaction.');
@@ -429,21 +433,13 @@ function renderReactionChips(message, chatId) {
   return wrap;
 }
 
-function messageIdOf(message) {
-  return message.id;
-}
-
 function isNearMessageListBottom() {
   return messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 48;
 }
 
-function scrollThreadToBottom({ instant = false } = {}) {
-  if (!instant) {
-    messageList.scrollTop = messageList.scrollHeight;
-    return;
-  }
-  // Bypass the stylesheet's smooth scrolling so the thread lands exactly at the
-  // bottom instead of stopping mid-animation.
+// Bypass the stylesheet's smooth scrolling so the thread lands exactly at the
+// bottom instead of stopping mid-animation.
+function scrollThreadToBottom() {
   const previous = messageList.style.scrollBehavior;
   messageList.style.scrollBehavior = 'auto';
   messageList.scrollTop = messageList.scrollHeight;
@@ -513,7 +509,7 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
       const quoteSender = document.createElement('strong');
       quoteSender.textContent = original ? (original.sender || fallbackSender) : 'Original message';
       const quoteText = document.createElement('span');
-      quoteText.textContent = original ? (snippet(original.text) || '(no text)') : 'Not loaded in this thread';
+      quoteText.textContent = original ? (plainTextSnippet(original.text) || '(no text)') : 'Not loaded in this thread';
       quote.append(quoteSender, quoteText);
       if (original) quote.addEventListener('click', () => scrollToMessage(message.replyToMessageId));
       else quote.disabled = true;
@@ -563,7 +559,7 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
   for (const image of messageList.querySelectorAll('img')) {
     if (!image.complete) {
       image.addEventListener('load', () => {
-        if (threadPinnedToBottom) scrollThreadToBottom({ instant: true });
+        if (threadPinnedToBottom) scrollThreadToBottom();
       }, { once: true });
     }
   }
@@ -573,9 +569,9 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
       return;
     }
     threadPinnedToBottom = true;
-    scrollThreadToBottom({ instant: true });
+    scrollThreadToBottom();
     window.setTimeout(() => {
-      if (threadPinnedToBottom) scrollThreadToBottom({ instant: true });
+      if (threadPinnedToBottom) scrollThreadToBottom();
     }, 350);
   });
 }
@@ -625,10 +621,10 @@ async function refreshChats({ quiet = false } = {}) {
     numbersByChatId = new Map(contacts.items.filter((contact) => contact.chatId).map((contact) => [contact.chatId, contact.number]));
     renderChats(chats.items);
     if (selectedChat && chatsById.has(selectedChat.id)) selectedChat = chatsById.get(selectedChat.id);
-    unreadCount.textContent = unread.total > 99 ? '99+' : unread.total;
+    unreadCount.textContent = formatCount(unread.total);
     unreadCount.setAttribute('aria-label', `${unread.total} unread message${unread.total === 1 ? '' : 's'}`);
     unreadCount.hidden = unread.total === 0;
-    document.title = unread.total > 0 ? `(${(unread.total > 99 ? '99+' : unread.total)}) Beeper Web` : 'Beeper Web';
+    document.title = unread.total > 0 ? `(${formatCount(unread.total)}) Beeper Web` : 'Beeper Web';
     for (const chat of chats.items) {
       const previous = lastUnreadByChatId.get(chat.id);
       lastUnreadByChatId.set(chat.id, chat.unreadCount);

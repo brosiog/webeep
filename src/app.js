@@ -35,6 +35,15 @@ function contentTypeIsJson(value) {
   return typeof value === 'string' && value.split(';', 1)[0].trim().toLowerCase() === 'application/json';
 }
 
+// Returns the parsed body, null after responding 415, or throws (→ 503) like before.
+async function requireJsonBody(request, response, maxBytes) {
+  if (!contentTypeIsJson(request.headers['content-type'])) {
+    json(response, 415, { error: 'unsupported_media_type' });
+    return null;
+  }
+  return readJson(request, maxBytes);
+}
+
 function validReplyToMessageId(value) {
   return value === undefined
     || (typeof value === 'string' && value.length > 0 && value.length <= 256);
@@ -127,8 +136,8 @@ export function createApp({ service, contacts = { async getLabelsForChats() { re
       if (request.method === 'GET' && url.pathname === '/api/contacts') return json(response, 200, { items: await contacts.list(await service.listChats()) });
       const contactMatch = request.method === 'PATCH' && url.pathname.match(/^\/api\/contacts\/([^/]+)$/);
       if (contactMatch) {
-        if (!contentTypeIsJson(request.headers['content-type'])) return json(response, 415, { error: 'unsupported_media_type' });
-        const body = await readJson(request);
+        const body = await requireJsonBody(request, response);
+        if (!body) return;
         if (typeof body?.name !== 'string' || body.name.length > 100) return json(response, 400, { error: 'invalid_request' });
         const contactId = decodeURIComponent(contactMatch[1]);
         const chats = await service.listChats();
@@ -140,8 +149,8 @@ export function createApp({ service, contacts = { async getLabelsForChats() { re
 
       const reactionPostMatch = request.method === 'POST' && url.pathname.match(/^\/api\/chats\/([^/]+)\/messages\/([^/]+)\/reactions$/);
       if (reactionPostMatch) {
-        if (!contentTypeIsJson(request.headers['content-type'])) return json(response, 415, { error: 'unsupported_media_type' });
-        const body = await readJson(request);
+        const body = await requireJsonBody(request, response);
+        if (!body) return;
         if (!validReactionKey(body?.emoji)) return json(response, 400, { error: 'invalid_request' });
         if (typeof service.sendReaction !== 'function') return json(response, 501, { error: 'not_supported' });
         const chatId = decodeURIComponent(reactionPostMatch[1]);
@@ -161,8 +170,8 @@ export function createApp({ service, contacts = { async getLabelsForChats() { re
 
       const sendMatch = request.method === 'POST' && url.pathname.match(/^\/api\/chats\/([^/]+)\/messages$/);
       if (sendMatch) {
-        if (!contentTypeIsJson(request.headers['content-type'])) return json(response, 415, { error: 'unsupported_media_type' });
-        const body = await readJson(request, MAX_MESSAGE_BYTES);
+        const body = await requireJsonBody(request, response, MAX_MESSAGE_BYTES);
+        if (!body) return;
         if (body?.confirmed !== true) return json(response, 400, { error: 'confirmation_required' });
         if (!validMessageSend(body)) return json(response, 400, { error: 'invalid_request' });
         const chatId = decodeURIComponent(sendMatch[1]);
