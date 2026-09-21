@@ -29,6 +29,7 @@ function messageProjection(message, { chatTitle = '', senderLabelByID = new Map(
   }).filter((attachment) => attachment.assetURL);
   const reactions = (message.reactions ?? []).map((reaction) => reactionProjection(reaction, senderLabelByID)).filter(Boolean);
   const replyToMessageId = typeof message.linkedMessageID === 'string' && message.linkedMessageID ? message.linkedMessageID : '';
+  const read = message.seen === true;
   return {
     id: message.id,
     chatId: message.chatID,
@@ -38,6 +39,7 @@ function messageProjection(message, { chatTitle = '', senderLabelByID = new Map(
     ...(attachments.length ? { attachments } : {}),
     ...(reactions.length ? { reactions } : {}),
     ...(replyToMessageId ? { replyToMessageId } : {}),
+    ...(read ? { read } : {}),
     timestamp: message.timestamp,
   };
 }
@@ -63,11 +65,13 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
         id: chat.id,
         title: chat.title,
         type: chat.type ?? 'single',
+        network: chat.network ?? '',
         participantPhoneNumbers: (chat.participants?.items ?? [])
           .filter((participant) => participant.phoneNumber && !participant.isSelf)
           .map((participant) => participant.phoneNumber),
         unreadCount: chat.unreadCount,
         preview: chat.preview?.text ?? '',
+        lastActivity: chat.preview?.timestamp ?? '',
       }));
     },
     async getUnreadCount() {
@@ -141,7 +145,7 @@ function inferAttachmentType(mimeType) {
 
 /** Deterministic local fixture; it never opens a network connection. */
 export function createMockService() {
-  const chats = [{ id: 'chat-1', title: 'Family', type: 'group', unreadCount: 2, preview: 'Dinner at six?' }];
+  const chats = [{ id: 'chat-1', title: 'Family', type: 'group', network: 'Mock', unreadCount: 2, preview: 'Dinner at six?', lastActivity: '2026-09-20T12:00:00.000Z' }];
   const markChatReadMock = (chatId) => {
     const chat = chats.find((item) => item.id === chatId);
     if (chat) chat.unreadCount = 0;
@@ -149,7 +153,7 @@ export function createMockService() {
   };
   const messages = [
     { id: 'message-1', chatId: 'chat-1', sender: 'Alex', text: 'Dinner at six?', reactions: [{ key: '❤️', participant: 'Alex' }], timestamp: '2026-09-20T12:00:00.000Z' },
-    { id: 'message-2', chatId: 'chat-1', sender: 'You', text: 'Yes, see you at six!', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:01:00.000Z' },
+    { id: 'message-2', chatId: 'chat-1', sender: 'You', text: 'Yes, see you at six!', replyToMessageId: 'message-1', read: true, timestamp: '2026-09-20T12:01:00.000Z' },
     { id: 'message-3', chatId: 'chat-1', sender: 'Alex', text: '', type: 'REACTION', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:02:00.000Z' },
     { id: 'message-4', chatId: 'chat-1', sender: 'Cronjob Bot', text: 'Cronjob Response: Regal Mystery Monday movie<br>(job_id: 812d1dd2a500)<br><br><strong>Regal Mystery Movie — Monday, September 21, 2026</strong><br>• <strong>PG-13</strong>, <strong>1h 41m</strong><br><a href="https://www.regmovies.com/movies/heart-of-the-beast-ho00021867">https://www.regmovies.com/movies/heart-of-the-beast-ho00021867</a>', timestamp: '2026-09-20T12:03:00.000Z' },
   ];

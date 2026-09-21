@@ -9,7 +9,7 @@ test('Beeper SDK pages use items and project bridge fields for the UI', async ()
     chats: {
       async list(...args) {
         requests.push({ operation: 'listChats', args });
-        return { items: [{ id: 'chat-1', title: 'Family', type: 'group', participants: { items: [{ id: 'user-1', phoneNumber: '+15550101' }, { id: 'self', phoneNumber: '+15550999', isSelf: true }] }, unreadCount: 2, draft: { text: 'Unsaved draft' }, preview: { text: 'Dinner at six?' } }] };
+        return { items: [{ id: 'chat-1', title: 'Family', type: 'group', network: 'Signal', participants: { items: [{ id: 'user-1', phoneNumber: '+15550101' }, { id: 'self', phoneNumber: '+15550999', isSelf: true }] }, unreadCount: 2, draft: { text: 'Unsaved draft' }, preview: { text: 'Dinner at six?', timestamp: '2026-09-20T12:00:00.000Z' } }] };
       },
       async retrieve(...args) {
         requests.push({ operation: 'retrieveChat', args });
@@ -41,7 +41,7 @@ test('Beeper SDK pages use items and project bridge fields for the UI', async ()
         requests.push({ operation: 'listMessages', args });
         return { items: [
           { id: 'message-1', chatID: 'chat-1', senderID: 'user-1', senderName: 'Alex', text: 'First', attachments: [{ id: 'mxc://beeper.example/photo', type: 'img', fileName: 'photo.jpg', fileSize: 1200, mimeType: 'image/jpeg' }], reactions: [{ id: 'user-2❤️', participantID: 'user-2', reactionKey: '❤️', emoji: true }], timestamp: '2026-09-20T12:00:00.000Z' },
-          { id: 'message-2', chatID: 'chat-1', senderID: 'user-2', text: 'Second', linkedMessageID: 'message-1', timestamp: '2026-09-20T12:01:00.000Z' },
+          { id: 'message-2', chatID: 'chat-1', senderID: 'user-2', text: 'Second', linkedMessageID: 'message-1', seen: true, timestamp: '2026-09-20T12:01:00.000Z' },
           { id: 'message-3', chatID: 'chat-1', senderID: 'user-3', text: 'Third', timestamp: '2026-09-20T12:02:00.000Z' },
           { id: 'message-4', chatID: 'chat-1', senderID: 'user-2', type: 'REACTION', linkedMessageID: 'message-1', timestamp: '2026-09-20T12:03:00.000Z' },
         ] };
@@ -63,11 +63,11 @@ test('Beeper SDK pages use items and project bridge fields for the UI', async ()
     },
   } });
 
-  assert.deepEqual(await service.listChats(), [{ id: 'chat-1', title: 'Family', type: 'group', participantPhoneNumbers: ['+15550101'], unreadCount: 2, preview: 'Dinner at six?' }]);
+  assert.deepEqual(await service.listChats(), [{ id: 'chat-1', title: 'Family', type: 'group', network: 'Signal', participantPhoneNumbers: ['+15550101'], unreadCount: 2, preview: 'Dinner at six?', lastActivity: '2026-09-20T12:00:00.000Z' }]);
   assert.equal(await service.getUnreadCount(), 2);
   assert.deepEqual(await service.listMessages('chat-1', 3), [
     { id: 'message-1', chatId: 'chat-1', chatTitle: '', sender: '+15550101', text: 'First', attachments: [{ assetURL: 'mxc://beeper.example/photo', type: 'img', fileName: 'photo.jpg', fileSize: 1200, mimeType: 'image/jpeg' }], reactions: [{ key: '❤️', participant: '+15550102', participantId: 'user-2', emoji: true }], timestamp: '2026-09-20T12:00:00.000Z' },
-    { id: 'message-2', chatId: 'chat-1', chatTitle: '', sender: '+15550102', text: 'Second', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:01:00.000Z' },
+    { id: 'message-2', chatId: 'chat-1', chatTitle: '', sender: '+15550102', text: 'Second', replyToMessageId: 'message-1', read: true, timestamp: '2026-09-20T12:01:00.000Z' },
     { id: 'message-3', chatId: 'chat-1', chatTitle: '', sender: '+15550103', text: 'Third', timestamp: '2026-09-20T12:02:00.000Z' },
   ]);
   assert.deepEqual(await service.search('dinner', 2), [{ id: 'message-4', chatId: 'chat-1', chatTitle: '', sender: 'Alex', text: 'Dinner at six?', timestamp: '2026-09-20T12:03:00.000Z' }]);

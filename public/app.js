@@ -1,4 +1,5 @@
 import { createClientMessageId } from './client-message-id.js';
+import { avatarGradient, formatChatTime } from './format.js';
 import { plainTextSnippet, renderRichText } from './rich-text.js';
 import { selectNewMessages } from './notify.js';
 
@@ -7,6 +8,8 @@ const chatStatus = document.querySelector('#chat-status');
 const messageList = document.querySelector('#message-list');
 const threadStatus = document.querySelector('#thread-status');
 const threadTitle = document.querySelector('#thread-title');
+const threadAvatar = document.querySelector('#thread-avatar');
+const threadStatusLine = document.querySelector('#thread-status-line');
 const unreadCount = document.querySelector('#unread-count');
 const searchForm = document.querySelector('#search-form');
 const searchInput = document.querySelector('#search-input');
@@ -173,7 +176,7 @@ function renderChats(chats) {
     if (chat.id === selectedChat?.id) button.classList.add('is-selected');
     button.dataset.chatId = chat.id;
     button.addEventListener('click', () => loadThread(chat));
-    const avatar = makeAvatar(chat.title);
+    const avatar = makeAvatar(chat.title, chat.id);
     const copy = document.createElement('span');
     copy.className = 'chat-copy';
     const title = document.createElement('span');
@@ -183,13 +186,22 @@ function renderChats(chats) {
     preview.className = 'preview';
     preview.textContent = chat.preview || '';
     copy.append(title, preview);
-    button.append(avatar, copy);
+    const meta = document.createElement('span');
+    meta.className = 'chat-meta';
+    const time = formatChatTime(chat.lastActivity);
+    if (time) {
+      const timeEl = document.createElement('span');
+      timeEl.className = 'chat-time';
+      timeEl.textContent = time;
+      meta.append(timeEl);
+    }
     if (chat.unreadCount) {
       const unread = document.createElement('span');
       unread.className = 'chat-unread';
       unread.textContent = formatCount(chat.unreadCount);
-      button.append(unread);
+      meta.append(unread);
     }
+    button.append(avatar, copy, meta);
     item.append(button);
     chatList.append(item);
   }
@@ -201,7 +213,7 @@ function renderContacts(contacts) {
   for (const contact of contacts) {
     const item = document.createElement('li');
     item.className = 'contact-card';
-    const avatar = makeAvatar(contact.name || contact.number);
+    const avatar = makeAvatar(contact.name || contact.number, contact.id);
     const copy = document.createElement('div');
     copy.className = 'contact-copy';
     const number = document.createElement('span');
@@ -338,12 +350,20 @@ function readFileAsBase64(file) {
   });
 }
 
-function makeAvatar(text) {
+function makeAvatar(text, id) {
   const avatar = document.createElement('span');
   avatar.className = 'chat-avatar';
   avatar.textContent = (text || 'U').trim().charAt(0).toUpperCase();
+  avatar.style.background = avatarGradient(id ?? text);
   avatar.setAttribute('aria-hidden', 'true');
   return avatar;
+}
+
+function threadStatusText(chat) {
+  const bits = [];
+  if (chat.network) bits.push(chat.network);
+  bits.push(chat.type === 'group' ? 'Group' : 'Direct message');
+  return bits.join(' · ');
 }
 
 function formatCount(total) {
@@ -472,6 +492,24 @@ function renderAttachment(attachment) {
     link.append(image);
     return link;
   }
+  if (attachment.type === 'audio' || attachment.type === 'video') {
+    const wrap = document.createElement('div');
+    wrap.className = `attachment attachment-${attachment.type}`;
+    const player = document.createElement(attachment.type);
+    player.controls = true;
+    player.preload = attachment.type === 'audio' ? 'none' : 'metadata';
+    player.src = attachment.url;
+    wrap.append(player);
+    const caption = document.createElement('span');
+    caption.className = 'attachment-copy';
+    const name = document.createElement('strong');
+    name.textContent = attachment.fileName || `${attachment.type} attachment`;
+    const details = document.createElement('small');
+    details.textContent = [attachment.mimeType, formatFileSize(attachment.fileSize)].filter(Boolean).join(' · ') || 'Attachment';
+    caption.append(name, details);
+    wrap.append(caption);
+    return wrap;
+  }
   const icon = document.createElement('span');
   icon.className = 'attachment-icon';
   icon.textContent = attachment.type === 'video' ? '▶' : attachment.type === 'audio' ? '♪' : '↓';
@@ -505,6 +543,7 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
     const time = document.createElement('time');
     time.dateTime = message.timestamp || '';
     time.textContent = formatTimestamp(message.timestamp);
+    const isOwn = message.sender === 'You';
     item.append(sender);
     if (message.replyToMessageId) {
       const original = messageById.get(message.replyToMessageId);
@@ -530,6 +569,13 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
     const footer = document.createElement('div');
     footer.className = 'message-footer';
     footer.append(time);
+    if (isOwn) {
+      const checks = document.createElement('span');
+      checks.className = `message-checks${message.read ? ' is-read' : ''}`;
+      checks.textContent = '✓✓';
+      checks.setAttribute('aria-label', message.read ? 'Read' : 'Sent');
+      footer.append(checks);
+    }
     if (chatId && message.id) {
       const replyButton = document.createElement('button');
       replyButton.type = 'button';
@@ -587,6 +633,9 @@ async function loadThread(chat) {
     button.classList.toggle('is-selected', button.dataset.chatId === chat.id);
   }
   threadTitle.textContent = chat.title || 'Untitled chat';
+  threadAvatar.textContent = (chat.title || 'B').trim().charAt(0).toUpperCase();
+  threadAvatar.style.background = avatarGradient(chat.id);
+  threadStatusLine.textContent = threadStatusText(chat);
   sendForm.hidden = false;
   setStatus(threadStatus, 'Loading messages…');
   messageList.replaceChildren();
@@ -683,12 +732,18 @@ searchForm.addEventListener('submit', async (event) => {
   setStatus(chatStatus, 'Searching…');
   try {
     const data = await request(`/api/search?q=${encodeURIComponent(query)}&limit=20`);
-    renderChats(data.items.map((message) => ({
-      id: message.chatId,
-      title: message.chatTitle || message.chatId,
-      unreadCount: 0,
-      preview: `${message.sender}: ${message.text}`,
-    })));
+    renderChats(data.items.map((message) => {
+      const known = chatsById.get(message.chatId);
+      return {
+        id: message.chatId,
+        title: message.chatTitle || message.chatId,
+        type: known?.type ?? 'single',
+        network: known?.network ?? '',
+        unreadCount: known?.unreadCount ?? 0,
+        preview: `${message.sender}: ${message.text}`,
+        lastActivity: known?.lastActivity ?? '',
+      };
+    }));
     setStatus(chatStatus, `${data.items.length} result${data.items.length === 1 ? '' : 's'}`);
   } catch {
     setStatus(chatStatus, 'Unable to search messages.');
@@ -697,6 +752,18 @@ searchForm.addEventListener('submit', async (event) => {
 
 document.addEventListener('click', (event) => {
   if (!event.target.closest('.reaction-palette') && !event.target.closest('.react-button')) closeOpenPalettes();
+});
+
+document.addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    const tag = document.activeElement?.tagName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      event.preventDefault();
+      showInbox();
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
 });
 
 messageList.addEventListener('scroll', () => {
