@@ -15,7 +15,7 @@
   --bg-hover: rgba(15, 40, 80, .06);
   --bg-selected: linear-gradient(180deg, #edf4ff 0%, #d6e9fd 100%);
   --selected-bar: #0a84ff;
-  --bg-bubble: #ffffff;
+  --bg-bubble: linear-gradient(180deg, #f8f8fa 0%, #ececf0 55%, #dfdfe5 100%);
   --bg-bubble-own: linear-gradient(180deg, #d9ecff 0%, #b3d6fb 55%, #9dc9f9 100%);
   --bubble-own-text: #16233a;
   --bg-chip: rgba(255, 255, 255, .9);
@@ -68,7 +68,7 @@
     --bg-hover: rgba(255, 255, 255, .06);
     --bg-selected: linear-gradient(180deg, rgba(60, 130, 230, .32) 0%, rgba(10, 110, 230, .24) 100%);
     --selected-bar: #5eb0ff;
-    --bg-bubble: #1b2540;
+    --bg-bubble: linear-gradient(180deg, #3a4152 0%, #2b3140 55%, #232839 100%);
     --bg-bubble-own: linear-gradient(135deg, #c9e3ff 0%, #a9d2fb 100%);
     --bubble-own-text: #16233a;
     --bg-chip: rgba(30, 42, 66, .9);
@@ -114,11 +114,6 @@ button { cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .app-shell { display: grid; grid-template-columns: 76px minmax(300px, 380px) minmax(0, 1fr); gap: 12px; height: 100dvh; padding: 12px; overflow: hidden; }
 .utility-rail { display: flex; flex-direction: column; align-items: center; gap: .6rem; padding: 1rem .6rem; border: 1px solid var(--border); border-radius: 22px; color: var(--rail-text); background: var(--bg-rail); backdrop-filter: blur(24px) saturate(1.7); -webkit-backdrop-filter: blur(24px) saturate(1.7); box-shadow: var(--panel-shadow), var(--glass-inner); }
-.traffic-lights { display: flex; gap: 7px; margin: .25rem 0 1rem; }
-.traffic-lights span { width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 1px 1px rgba(255, 255, 255, .7), inset 0 -1px 2px rgba(0, 0, 0, .25), 0 1px 2px rgba(0, 0, 0, .2); }
-.traffic-lights span:nth-child(1) { background: radial-gradient(circle at 35% 30%, #ffc9c5 0%, #ff5f57 55%, #e0443e 100%); }
-.traffic-lights span:nth-child(2) { background: radial-gradient(circle at 35% 30%, #ffe9bd 0%, #febc2e 55%, #e09a12 100%); }
-.traffic-lights span:nth-child(3) { background: radial-gradient(circle at 35% 30%, #c8f5cd 0%, #28c840 55%, #1aab35 100%); }
 .rail-button { display: grid; width: 48px; height: 48px; place-items: center; border: 0; border-radius: 16px; color: inherit; background: transparent; }
 .rail-button svg { display: block; width: 23px; height: 23px; }
 .rail-button:hover { background: var(--bg-hover); }
