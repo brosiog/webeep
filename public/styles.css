@@ -17,6 +17,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .eyebrow { margin: 0 0 .2rem; color: #68747d; font-size: .66rem; font-weight: 800; letter-spacing: .12em; }
 .sidebar h1, .thread-header h2 { margin: 0; color: #27313b; font-size: 1.35rem; letter-spacing: -.03em; }
 .unread-total { display: grid; width: 1.7rem; height: 1.7rem; place-items: center; margin: 0; border-radius: 50%; color: #fff; background: #4d7da6; box-shadow: 0 2px 5px #31495e33; font-size: .68rem; font-weight: 800; }
+.sidebar-toggle { border: 0; border-radius: 8px; background: transparent; color: #536574; font-size: 1rem; font-weight: 800; padding: .3rem .5rem; }
+.sidebar-toggle:hover { background: #dce5dd; }
+.chat-avatar { display: none; }
+.app-shell.sidebar-collapsed { grid-template-columns: 88px 78px minmax(0, 1fr); }
+.sidebar-collapsed .sidebar-header { flex-direction: column; gap: .6rem; padding: 1.25rem .5rem; }
+.sidebar-collapsed .sidebar-header div { display: none; }
+.sidebar-collapsed .search-form, .sidebar-collapsed .list-heading, .sidebar-collapsed .status, .sidebar-collapsed .chat-copy, .sidebar-collapsed .contact-copy, .sidebar-collapsed .contact-form, .sidebar-collapsed .contacts-heading { display: none; }
+.sidebar-collapsed .chat-avatar { display: grid; width: 40px; aspect-ratio: 1; place-items: center; border-radius: 50%; color: #fff; background: #81998a; font-size: .85rem; font-weight: 800; }
+.sidebar-collapsed .chat-list, .sidebar-collapsed .contact-list { padding: 0 .5rem 1rem; }
+.sidebar-collapsed .chat-button, .sidebar-collapsed .contact-card { position: relative; grid-template-columns: minmax(0, 1fr); justify-items: center; padding: .6rem .25rem; }
+.sidebar-collapsed .chat-button.is-selected { box-shadow: none; outline: 2px solid #75917d; }
+.sidebar-collapsed .chat-unread { position: absolute; top: .1rem; right: .1rem; }
 .search-form { display: flex; align-items: center; margin: 0 1.5rem 1.5rem; border: 1px solid #d6ddd5; border-radius: 14px; background: #f8faf7; }
 .search-icon { padding-left: .85rem; color: #536574; font-size: 1.55rem; line-height: 1; }
 input, textarea { width: 100%; border: 0; color: #27313b; background: transparent; }

@@ -21,6 +21,7 @@ const contactsStatus = document.querySelector('#contacts-status');
 
 let selectedChat = null;
 let replyTarget = null;
+let threadPinnedToBottom = true;
 const replyBar = document.createElement('div');
 replyBar.className = 'reply-bar';
 replyBar.hidden = true;
@@ -59,6 +60,10 @@ function renderChats(chats) {
     if (chat.id === selectedChat?.id) button.classList.add('is-selected');
     button.dataset.chatId = chat.id;
     button.addEventListener('click', () => loadThread(chat));
+    const avatar = document.createElement('span');
+    avatar.className = 'chat-avatar';
+    avatar.textContent = (chat.title || 'U').trim().charAt(0).toUpperCase();
+    avatar.setAttribute('aria-hidden', 'true');
     const copy = document.createElement('span');
     copy.className = 'chat-copy';
     const title = document.createElement('span');
@@ -68,7 +73,7 @@ function renderChats(chats) {
     preview.className = 'preview';
     preview.textContent = chat.preview || '';
     copy.append(title, preview);
-    button.append(copy);
+    button.append(avatar, copy);
     if (chat.unreadCount) {
       const unread = document.createElement('span');
       unread.className = 'chat-unread';
@@ -86,6 +91,10 @@ function renderContacts(contacts) {
   for (const contact of contacts) {
     const item = document.createElement('li');
     item.className = 'contact-card';
+    const avatar = document.createElement('span');
+    avatar.className = 'chat-avatar';
+    avatar.textContent = (contact.name || contact.number).charAt(0).toUpperCase();
+    avatar.setAttribute('aria-hidden', 'true');
     const copy = document.createElement('div');
     copy.className = 'contact-copy';
     const number = document.createElement('span');
@@ -119,7 +128,7 @@ function renderContacts(contacts) {
       }
     });
     form.append(input, save);
-    item.append(copy, form);
+    item.append(avatar, copy, form);
     contactList.append(item);
   }
   if (contacts.length === 0) contactList.textContent = 'No number-only conversations yet.';
@@ -281,6 +290,19 @@ function isNearMessageListBottom() {
   return messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight < 48;
 }
 
+function scrollThreadToBottom({ instant = false } = {}) {
+  if (!instant) {
+    messageList.scrollTop = messageList.scrollHeight;
+    return;
+  }
+  // Bypass the stylesheet's smooth scrolling so the thread lands exactly at the
+  // bottom instead of stopping mid-animation.
+  const previous = messageList.style.scrollBehavior;
+  messageList.style.scrollBehavior = 'auto';
+  messageList.scrollTop = messageList.scrollHeight;
+  messageList.style.scrollBehavior = previous;
+}
+
 function formatFileSize(bytes) {
   if (!Number.isFinite(bytes) || bytes < 1) return '';
   if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`;
@@ -388,10 +410,25 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
     messageList.append(item);
   }
   if (messages.length === 0) messageList.textContent = 'No messages found.';
+  // Late-loading attachments grow the list after the initial scroll, so re-pin
+  // once they settle (unless the user has scrolled up meanwhile).
+  for (const image of messageList.querySelectorAll('img')) {
+    if (!image.complete) {
+      image.addEventListener('load', () => {
+        if (threadPinnedToBottom) scrollThreadToBottom({ instant: true });
+      }, { once: true });
+    }
+  }
   requestAnimationFrame(() => {
-    messageList.scrollTop = stickToBottom
-      ? messageList.scrollHeight
-      : previousScrollTop + (messageList.scrollHeight - previousScrollHeight);
+    if (!stickToBottom) {
+      messageList.scrollTop = previousScrollTop + (messageList.scrollHeight - previousScrollHeight);
+      return;
+    }
+    threadPinnedToBottom = true;
+    scrollThreadToBottom({ instant: true });
+    window.setTimeout(() => {
+      if (threadPinnedToBottom) scrollThreadToBottom({ instant: true });
+    }, 350);
   });
 }
 
@@ -405,6 +442,7 @@ async function loadThread(chat) {
   setStatus(threadStatus, 'Loading messages…');
   messageList.replaceChildren();
   displayedMessageSignature = '';
+  threadPinnedToBottom = true;
   setReplyTarget(null);
   await refreshSelectedThread({ initialLoad: true });
 }
@@ -479,6 +517,36 @@ searchForm.addEventListener('submit', async (event) => {
 document.addEventListener('click', (event) => {
   if (!event.target.closest('.reaction-palette') && !event.target.closest('.react-button')) closeOpenPalettes();
 });
+
+messageList.addEventListener('scroll', () => {
+  threadPinnedToBottom = isNearMessageListBottom();
+}, { passive: true });
+
+const sidebarToggle = document.querySelector('#sidebar-toggle');
+const appShell = document.querySelector('.app-shell');
+
+function setSidebarCollapsed(collapsed) {
+  appShell.classList.toggle('sidebar-collapsed', collapsed);
+  sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+  sidebarToggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  sidebarToggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+  sidebarToggle.textContent = collapsed ? '»' : '«';
+  try {
+    window.localStorage.setItem('beeper-sidebar-collapsed', collapsed ? '1' : '0');
+  } catch {
+    // Private browsing or disabled storage: collapse still works for this visit.
+  }
+}
+
+sidebarToggle.addEventListener('click', () => {
+  setSidebarCollapsed(!appShell.classList.contains('sidebar-collapsed'));
+});
+
+try {
+  if (window.localStorage.getItem('beeper-sidebar-collapsed') === '1') setSidebarCollapsed(true);
+} catch {
+  // Storage unavailable; start expanded.
+}
 
 refreshButton.addEventListener('click', refreshChats);
 inboxButton.addEventListener('click', showInbox);
