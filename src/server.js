@@ -18,7 +18,7 @@ app.server.on('request', (request, response) => {
   const requested = request.url === '/' ? '/index.html' : request.url.split('?')[0];
   const file = normalize(join(publicDir, requested));
   if (!file.startsWith(publicDir) || !existsSync(file)) { response.writeHead(404); return response.end(); }
-  response.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream', 'x-content-type-options': 'nosniff' });
+  response.writeHead(200, { 'content-type': types[extname(file)] ?? 'application/octet-stream', 'x-content-type-options': 'nosniff', 'cache-control': 'no-cache' });
   createReadStream(file).pipe(response);
 });
 
