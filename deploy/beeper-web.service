@@ -1,0 +1,23 @@
+[Unit]
+Description=Beeper Web (loopback backend)
+After=network.target
+
+[Service]
+Type=simple
+User=beeper-web
+Group=beeper-web
+WorkingDirectory=/opt/beeper-web
+EnvironmentFile=/etc/beeper-web.env
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/beeper-web
+
+[Install]
+WantedBy=multi-user.target
