@@ -192,7 +192,7 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); }
 .message:hover .react-button, .react-button:focus-visible { opacity: 1; }
 .react-button:hover { background: var(--bg-hover); }
 .message.is-own .react-button:hover { background: rgba(128, 128, 128, .35); }
-.reaction-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem; margin-top: .35rem; }
+.reaction-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
 .reaction-chip { padding: .1rem .5rem; border: 1px solid var(--chip-border); border-radius: 999px; color: var(--text); background: var(--bg-chip); font-size: .78rem; }
 .reaction-chip:hover { border-color: var(--text); }
 .reaction-chip.is-own { border-color: var(--chip-own-border); background: var(--chip-own-bg); }
