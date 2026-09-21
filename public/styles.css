@@ -126,7 +126,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .sidebar-collapsed .sidebar-header div { display: none; }
 .sidebar-collapsed .search-form, .sidebar-collapsed .list-heading, .sidebar-collapsed .sidebar .status, .sidebar-collapsed .chat-copy, .sidebar-collapsed .contact-copy, .sidebar-collapsed .contact-form, .sidebar-collapsed .contacts-heading { display: none; }
 .sidebar-collapsed .chat-avatar { display: grid; width: 40px; aspect-ratio: 1; place-items: center; border-radius: 50%; color: #fff; background: var(--avatar-bg); font-size: .85rem; font-weight: 400; }
-.sidebar-collapsed .chat-list, .sidebar-collapsed .contact-list { padding: 0 .5rem 1rem; }
+.sidebar-collapsed .chat-list, .sidebar-collapsed .contact-list { padding: .5rem .5rem 1rem; }
 .sidebar-collapsed .chat-button, .sidebar-collapsed .contact-card { position: relative; grid-template-columns: minmax(0, 1fr); justify-items: center; padding: .6rem .25rem; }
 .sidebar-collapsed .chat-button.is-selected { box-shadow: none; outline: 2px solid var(--selected-bar); }
 .sidebar-collapsed .chat-unread { position: absolute; top: .1rem; right: .1rem; }
