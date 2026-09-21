@@ -39,11 +39,12 @@ test('Beeper SDK pages use items and project bridge fields for the UI', async ()
           { id: 'message-1', chatID: 'chat-1', senderID: 'user-1', senderName: 'Alex', text: 'First', attachments: [{ id: 'mxc://beeper.example/photo', type: 'img', fileName: 'photo.jpg', fileSize: 1200, mimeType: 'image/jpeg' }], reactions: [{ id: 'user-2❤️', participantID: 'user-2', reactionKey: '❤️', emoji: true }], timestamp: '2026-09-20T12:00:00.000Z' },
           { id: 'message-2', chatID: 'chat-1', senderID: 'user-2', text: 'Second', linkedMessageID: 'message-1', timestamp: '2026-09-20T12:01:00.000Z' },
           { id: 'message-3', chatID: 'chat-1', senderID: 'user-3', text: 'Third', timestamp: '2026-09-20T12:02:00.000Z' },
+          { id: 'message-4', chatID: 'chat-1', senderID: 'user-2', type: 'REACTION', linkedMessageID: 'message-1', timestamp: '2026-09-20T12:03:00.000Z' },
         ] };
       },
       async search(...args) {
         requests.push({ operation: 'search', args });
-        return { items: [{ id: 'message-4', chatID: 'chat-1', senderID: 'user-1', senderName: 'Alex', text: 'Dinner at six?', timestamp: '2026-09-20T12:03:00.000Z' }] };
+        return { items: [{ id: 'message-4', chatID: 'chat-1', senderID: 'user-1', senderName: 'Alex', text: 'Dinner at six?', timestamp: '2026-09-20T12:03:00.000Z' }, { id: 'message-5', chatID: 'chat-1', senderID: 'user-2', type: 'REACTION', text: 'Dinner at six?', linkedMessageID: 'message-4', timestamp: '2026-09-20T12:04:00.000Z' }] };
       },
       async send(...args) {
         requests.push({ operation: 'send', args });

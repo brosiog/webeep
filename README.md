@@ -44,6 +44,6 @@ Bridge QR login and any OAuth authorization are user-performed steps in the Beep
 - `POST /api/chats/:chatId/messages/:messageId/reactions` with `{ "emoji" }`
 - `DELETE /api/chats/:chatId/messages/:messageId/reactions/:emoji`
 
-Message projections include a `reactions` array (`[{ key, participant }]`) when the bridge reports reactions, and a `replyToMessageId` when the message is a reply. The UI renders quoted context above replies (click to jump to the original) and a ↩ button on each message to reply with a quoted preview bar. The UI groups reactions by emoji; clicking a chip removes your reaction, and the 🙂 button opens a small emoji palette to add one.
+Message projections include a `reactions` array (`[{ key, participant }]`) when the bridge reports reactions, and a `replyToMessageId` when the message is a reply. Standalone `REACTION` echo messages from the bridge are hidden from threads and search, since their emoji already appears as a chip on the target message. The UI renders quoted context above replies (click to jump to the original) and a ↩ button on each message to reply with a quoted preview bar. The UI groups reactions by emoji; clicking a chip removes your reaction, and the 🙂 button opens a small emoji palette to add one.
 
 The UI sends immediately on Enter (Shift+Enter inserts a newline) and always sets `confirmed: true` on text-send requests.

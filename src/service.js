@@ -70,11 +70,13 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
           .filter(([, label]) => label),
       );
       const fallbackSender = chat.type === 'single' ? chat.title : '';
-      return page.items.slice(-limit).map((message) => messageProjection(message, '', senderLabelByID, fallbackSender));
+      // The bridge echoes each reaction as a standalone REACTION message; those are
+      // hidden here because reactions already surface as chips on the target message.
+      return page.items.filter((message) => message.type !== 'REACTION').slice(-limit).map((message) => messageProjection(message, '', senderLabelByID, fallbackSender));
     },
     async search(query, limit) {
       const page = await client.messages.search({ query, limit });
-      return page.items.slice(0, limit).map((message) => messageProjection(message));
+      return page.items.filter((message) => message.type !== 'REACTION').slice(0, limit).map((message) => messageProjection(message));
     },
     async serveAsset(url) {
       return client.assets.serve({ url });
@@ -103,15 +105,16 @@ export function createMockService() {
   const messages = [
     { id: 'message-1', chatId: 'chat-1', sender: 'Alex', text: 'Dinner at six?', reactions: [{ key: '❤️', participant: 'Alex' }], timestamp: '2026-09-20T12:00:00.000Z' },
     { id: 'message-2', chatId: 'chat-1', sender: 'You', text: 'Yes, see you at six!', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:01:00.000Z' },
+    { id: 'message-3', chatId: 'chat-1', sender: 'Alex', text: '', type: 'REACTION', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:02:00.000Z' },
   ];
   let nextId = 1;
   return {
     async listChats() { return chats; },
     async getUnreadCount() { return chats.reduce((total, chat) => total + chat.unreadCount, 0); },
-    async listMessages(chatId, limit) { return messages.filter((message) => message.chatId === chatId).slice(-limit); },
+    async listMessages(chatId, limit) { return messages.filter((message) => message.chatId === chatId && message.type !== 'REACTION').slice(-limit); },
     async search(query, limit) {
       const needle = query.toLowerCase();
-      return messages.filter((message) => message.text.toLowerCase().includes(needle)).slice(0, limit).map((message) => ({ ...message, chatTitle: 'Family' }));
+      return messages.filter((message) => message.type !== 'REACTION' && message.text.toLowerCase().includes(needle)).slice(0, limit).map((message) => ({ ...message, chatTitle: 'Family' }));
     },
     async sendText({ chatId, text, clientMessageId, replyToMessageId }) {
       const message = { id: `pending-${nextId++}`, chatId, sender: 'You', text, timestamp: '2026-09-20T12:01:00.000Z', clientMessageId };
