@@ -41,5 +41,9 @@ Bridge QR login and any OAuth authorization are user-performed steps in the Beep
 - `GET /api/chats/:chatId/messages?limit=50`
 - `GET /api/search?q=...&limit=20`
 - `POST /api/chats/:chatId/messages` with `{ "text", "confirmed": true, "clientMessageId" }`
+- `POST /api/chats/:chatId/messages/:messageId/reactions` with `{ "emoji" }`
+- `DELETE /api/chats/:chatId/messages/:messageId/reactions/:emoji`
+
+Message projections include a `reactions` array (`[{ key, participant }]`) when the bridge reports reactions. The UI groups reactions by emoji; clicking a chip removes your reaction, and the 🙂 button opens a small emoji palette to add one.
 
 The UI asks for browser confirmation before it issues a text-send request.

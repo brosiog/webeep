@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { Readable } from 'node:stream';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 const MAX_BODY_BYTES = 16_384;
@@ -41,15 +42,93 @@ function validTextSend(body) {
     && /^[A-Za-z0-9_-]{8,128}$/.test(body.clientMessageId);
 }
 
-export function createApp({ service }) {
+function attachmentForClient(attachment) {
+  const { assetURL, ...metadata } = attachment;
+  return {
+    ...metadata,
+    url: assetURL ? `/api/assets?url=${encodeURIComponent(assetURL)}` : '',
+  };
+}
+
+function validReactionKey(value) {
+  return typeof value === 'string'
+    && value.trim().length > 0
+    && value.length <= 32
+    && !/[\u0000-\u001F\u007F]/.test(value);
+}
+
+function validAssetURL(value) {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= 2_048
+    && /^(?:mxc|localmxc):\/\//.test(value);
+}
+
+export function createApp({ service, contacts = { async getLabelsForChats() { return {}; }, async list() { return []; }, async setLabel() {} } }) {
   const idempotentSends = new Map();
+  async function chatsWithLabels() {
+    const chats = await service.listChats();
+    const labels = await contacts.list(chats);
+    const labelByChatId = new Map(labels.filter((contact) => contact.name).map((contact) => [contact.chatId, contact.name]));
+    return chats.map((chat) => ({ ...chat, title: labelByChatId.get(chat.id) ?? chat.title }));
+  }
   const server = createServer(async (request, response) => {
     const url = new URL(request.url, 'http://localhost');
 
     try {
       if (request.method === 'GET' && url.pathname === '/api/health') return json(response, 200, { status: 'ok' });
-      if (request.method === 'GET' && url.pathname === '/api/chats') return json(response, 200, { items: await service.listChats() });
+      if (request.method === 'GET' && url.pathname === '/api/chats') return json(response, 200, { items: await chatsWithLabels() });
       if (request.method === 'GET' && url.pathname === '/api/unread-count') return json(response, 200, { total: await service.getUnreadCount() });
+
+      if (request.method === 'GET' && url.pathname === '/api/assets') {
+        const assetURL = url.searchParams.get('url');
+        if (!validAssetURL(assetURL)) return json(response, 400, { error: 'invalid_request' });
+        const asset = await service.serveAsset(assetURL);
+        if (!asset.ok) return json(response, asset.status || 502, { error: 'asset_unavailable' });
+        const headers = {};
+        for (const header of ['content-type', 'content-length', 'accept-ranges']) {
+          const value = asset.headers.get(header);
+          if (value) headers[header] = value;
+        }
+        response.writeHead(200, headers);
+        if (!asset.body) return response.end();
+        return Readable.fromWeb(asset.body).pipe(response);
+      }
+
+      if (request.method === 'GET' && url.pathname === '/api/contacts') return json(response, 200, { items: await contacts.list(await service.listChats()) });
+      const contactMatch = request.method === 'PATCH' && url.pathname.match(/^\/api\/contacts\/([^/]+)$/);
+      if (contactMatch) {
+        if (!contentTypeIsJson(request.headers['content-type'])) return json(response, 415, { error: 'unsupported_media_type' });
+        const body = await readJson(request);
+        if (typeof body?.name !== 'string' || body.name.length > 100) return json(response, 400, { error: 'invalid_request' });
+        const contactId = decodeURIComponent(contactMatch[1]);
+        const chats = await service.listChats();
+        const contact = (await contacts.list(chats)).find((item) => item.id === contactId);
+        if (!contact) return json(response, 404, { error: 'not_found' });
+        await contacts.setLabel(contact.number, body.name);
+        return json(response, 200, { ...contact, name: body.name.trim() });
+      }
+
+      const reactionPostMatch = request.method === 'POST' && url.pathname.match(/^\/api\/chats\/([^/]+)\/messages\/([^/]+)\/reactions$/);
+      if (reactionPostMatch) {
+        if (!contentTypeIsJson(request.headers['content-type'])) return json(response, 415, { error: 'unsupported_media_type' });
+        const body = await readJson(request);
+        if (!validReactionKey(body?.emoji)) return json(response, 400, { error: 'invalid_request' });
+        if (typeof service.sendReaction !== 'function') return json(response, 501, { error: 'not_supported' });
+        const chatId = decodeURIComponent(reactionPostMatch[1]);
+        const messageId = decodeURIComponent(reactionPostMatch[2]);
+        return json(response, 201, { status: 'reacted', ...(await service.sendReaction({ chatId, messageId, emoji: body.emoji })) });
+      }
+
+      const reactionDeleteMatch = request.method === 'DELETE' && url.pathname.match(/^\/api\/chats\/([^/]+)\/messages\/([^/]+)\/reactions\/([^/]+)$/);
+      if (reactionDeleteMatch) {
+        if (typeof service.removeReaction !== 'function') return json(response, 501, { error: 'not_supported' });
+        const chatId = decodeURIComponent(reactionDeleteMatch[1]);
+        const messageId = decodeURIComponent(reactionDeleteMatch[2]);
+        const emoji = decodeURIComponent(reactionDeleteMatch[3]);
+        if (!validReactionKey(emoji)) return json(response, 400, { error: 'invalid_request' });
+        return json(response, 200, { status: 'removed', ...(await service.removeReaction({ chatId, messageId, emoji })) });
+      }
 
       const sendMatch = request.method === 'POST' && url.pathname.match(/^\/api\/chats\/([^/]+)\/messages$/);
       if (sendMatch) {
@@ -71,14 +150,27 @@ export function createApp({ service }) {
       if (messageMatch) {
         const limit = Number(url.searchParams.get('limit') ?? 50);
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) return json(response, 400, { error: 'invalid_request' });
-        return json(response, 200, { items: await service.listMessages(decodeURIComponent(messageMatch[1]), limit) });
+        const chatId = decodeURIComponent(messageMatch[1]);
+        const [messages, chats] = await Promise.all([service.listMessages(chatId, limit), service.listChats()]);
+        const savedLabels = await contacts.getLabelsForChats(chats);
+        const labelByNumber = new Map(Object.entries(savedLabels).filter(([, name]) => name));
+        return json(response, 200, { items: messages.map((message) => ({
+          ...message,
+          sender: labelByNumber.get(message.sender) ?? message.sender,
+          attachments: (message.attachments ?? []).map(attachmentForClient),
+        })) });
       }
 
       if (request.method === 'GET' && url.pathname === '/api/search') {
         const query = url.searchParams.get('q');
         const limit = Number(url.searchParams.get('limit') ?? 20);
         if (typeof query !== 'string' || query.trim().length === 0 || query.length > 200 || !Number.isInteger(limit) || limit < 1 || limit > 100) return json(response, 400, { error: 'invalid_request' });
-        return json(response, 200, { items: await service.search(query, limit) });
+        const [messages, chats] = await Promise.all([service.search(query, limit), service.listChats()]);
+        const chatTitleById = new Map(chats.map((chat) => [chat.id, chat.title]));
+        return json(response, 200, { items: messages.map((message) => ({
+          ...message,
+          chatTitle: chatTitleById.get(message.chatId) ?? message.chatTitle ?? 'Unknown chat',
+        })) });
       }
 
       return json(response, 404, { error: 'not_found' });

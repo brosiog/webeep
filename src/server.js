@@ -1,10 +1,14 @@
 import { createReadStream, existsSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { createApp } from './app.js';
+import { createContactStore } from './contacts.js';
 import { createBeeperService, createMockService } from './service.js';
 
 const publicDir = new URL('../public/', import.meta.url).pathname;
-const app = createApp({ service: process.env.BEEPER_MODE === 'mock' ? createMockService() : createBeeperService({ accessToken: process.env.BEEPER_ACCESS_TOKEN, baseURL: process.env.BEEPER_BASE_URL }) });
+const app = createApp({
+  service: process.env.BEEPER_MODE === 'mock' ? createMockService() : createBeeperService({ accessToken: process.env.BEEPER_ACCESS_TOKEN, baseURL: process.env.BEEPER_BASE_URL }),
+  contacts: createContactStore({ filePath: process.env.CONTACTS_FILE ?? `${process.cwd()}/data/contacts.json` }),
+});
 const apiServer = app.server.listeners('request')[0];
 const types = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8' };
 

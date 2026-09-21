@@ -5,42 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Beeper Web</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="app-shell">
+    <nav class="utility-rail" aria-label="Application navigation">
+      <a class="brand" href="/" aria-label="Beeper home"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></a>
+      <button id="inbox-button" class="rail-button is-active" type="button" aria-label="Messages" aria-pressed="true">●</button><button id="contacts-button" class="rail-button" type="button" aria-label="Contacts" aria-pressed="false">♧</button><button class="rail-button" type="button" aria-label="Archive">□</button><span class="rail-spacer"></span><button class="rail-button" type="button" aria-label="Settings">⚙</button>
+    </nav>
     <aside class="sidebar" aria-label="Chats">
-      <div class="sidebar-header">
-        <h1>Beeper</h1>
-        <p id="unread-count" aria-live="polite">Unread: —</p>
-      </div>
-      <form id="search-form" class="search-form">
-        <label for="search-input">Search messages</label>
-        <div class="search-row">
-          <input id="search-input" name="q" type="search" maxlength="200" autocomplete="off">
-          <button type="submit">Search</button>
-        </div>
-      </form>
-      <p id="chat-status" class="status" role="status"></p>
-      <ul id="chat-list" class="chat-list" aria-label="Chat list"></ul>
+      <div class="sidebar-header"><div><p class="eyebrow">INBOX</p><h1>Beeper</h1></div><p id="unread-count" class="unread-total" aria-live="polite">—</p></div>
+      <div id="inbox-view"><form id="search-form" class="search-form"><label class="visually-hidden" for="search-input">Search messages</label><span class="search-icon" aria-hidden="true">⌕</span><input id="search-input" name="q" type="search" maxlength="200" autocomplete="off" placeholder="Search conversations"><button class="compose-button" type="submit" aria-label="Search">↗</button></form><div class="list-heading"><span>CONVERSATIONS</span><button id="refresh-button" type="button">Refresh</button></div><p id="chat-status" class="status" role="status"></p><ul id="chat-list" class="chat-list" aria-label="Chat list"></ul></div>
+      <section id="contacts-view" class="contacts-view" aria-label="Number contacts" hidden><div class="contacts-heading"><p class="eyebrow">NUMBER HISTORY</p><p>Names you set here appear in your inbox.</p></div><p id="contacts-status" class="status" role="status"></p><ul id="contact-list" class="contact-list"></ul></section>
     </aside>
-
     <section class="thread" aria-labelledby="thread-title">
-      <header class="thread-header">
-        <h2 id="thread-title">Select a chat</h2>
-      </header>
-      <p id="thread-status" class="status" role="status"></p>
-      <ol id="message-list" class="message-list" aria-live="polite"></ol>
-      <form id="send-form" class="send-form" hidden>
-        <label for="message-input">Message</label>
-        <div class="send-row">
-          <textarea id="message-input" rows="2" maxlength="4000" required></textarea>
-          <button type="submit">Send</button>
-        </div>
-        <p class="send-note">You will be asked to confirm before a message is sent.</p>
-      </form>
+      <header class="thread-header"><div class="thread-avatar" aria-hidden="true" id="thread-avatar">B</div><div class="thread-identification"><p class="eyebrow">CONVERSATION</p><h2 id="thread-title">Select a chat</h2></div><div class="thread-actions" aria-label="Conversation actions"><button type="button" aria-label="Search conversation">⌕</button><button type="button" aria-label="More options">•••</button></div></header>
+      <p id="thread-status" class="status thread-status" role="status"></p><ol id="message-list" class="message-list" aria-live="polite"></ol>
+      <form id="send-form" class="send-form" hidden><label class="visually-hidden" for="message-input">Message</label><button class="add-button" type="button" aria-label="Add attachment" disabled>+</button><textarea id="message-input" rows="1" maxlength="4000" required placeholder="Write a message"></textarea><button class="send-button" type="submit" aria-label="Send message">↗</button><p class="send-note">Sending requires confirmation.</p></form>
     </section>
   </main>
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
