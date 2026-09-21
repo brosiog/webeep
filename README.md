@@ -44,6 +44,16 @@ Bridge QR login and any OAuth authorization are user-performed steps in the Beep
 - `POST /api/chats/:chatId/messages/:messageId/reactions` with `{ "emoji" }`
 - `DELETE /api/chats/:chatId/messages/:messageId/reactions/:emoji`
 
+## Notifications
+
+The 🔔 button beside Refresh opts into notifications, which are checked on every poll:
+
+- **System notifications** (Notification API) for new messages in chats you are not actively viewing. Clicking one opens that chat. These need browser permission; on plain-`http` LAN origins the browser may withhold it, in which case the button reports it as blocked.
+- **In-app toasts** for the same events whenever the tab is visible — click a toast to jump to the chat.
+- **Tab title badge** with the total unread count, always on.
+
+Only genuinely new arrivals notify: opening a chat marks its messages seen, and your own messages never trigger. While the tab is hidden the app keeps polling chats (thread refresh pauses) so background arrivals still surface; note browsers may throttle hidden-tab timers to about one poll per minute.
+
 Message projections include a `reactions` array (`[{ key, participant }]`) when the bridge reports reactions, and a `replyToMessageId` when the message is a reply. Standalone `REACTION` echo messages from the bridge are hidden from threads and search, since their emoji already appears as a chip on the target message. The UI renders quoted context above replies (click to jump to the original) and a ↩ button on each message to reply with a quoted preview bar. The UI groups reactions by emoji; clicking a chip removes your reaction, and the 🙂 button opens a small emoji palette to add one.
 
 The UI sends immediately on Enter (Shift+Enter inserts a newline) and always sets `confirmed: true` on text-send requests.

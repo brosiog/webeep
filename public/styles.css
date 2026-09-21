@@ -136,6 +136,13 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); }
 .compose-button { width: 2.5rem; border: 0; color: var(--text-muted); background: none; font-size: 1.35rem; }
 .list-heading { display: flex; justify-content: space-between; padding: 0 1.75rem .6rem; color: var(--text-muted); font-size: .66rem; font-weight: 800; letter-spacing: .11em; }
 .list-heading button { border: 0; color: var(--text-muted); background: transparent; font-size: .72rem; font-weight: 700; }
+.list-actions { display: flex; gap: .15rem; align-items: center; }
+#notify-button { font-size: .95rem; padding: .2rem .35rem; border-radius: 8px; }
+#notify-button:hover { background: var(--bg-hover); }
+.toast-stack { position: fixed; right: 1rem; bottom: 1rem; z-index: 50; display: flex; flex-direction: column; gap: .5rem; max-width: min(22rem, calc(100vw - 2rem)); }
+.toast { display: flex; flex-direction: column; gap: .15rem; padding: .7rem .9rem; border: 1px solid var(--border-strong); border-radius: 12px; color: var(--text); background: var(--bg-palette); box-shadow: 0 6px 20px var(--shadow); text-align: left; }
+.toast strong { font-size: .8rem; }
+.toast span { overflow: hidden; color: var(--text-muted); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
 .status { min-height: 1.1rem; margin: 0; padding: 0 1.75rem; color: var(--text-muted); font-size: .77rem; }
 #inbox-view, .contacts-view { display: flex; min-height: 0; flex: 1; flex-direction: column; }
 .contacts-heading { padding: .5rem 1.75rem 1rem; } .contacts-heading p:last-child { margin: 0; color: var(--text-muted); font-size: .82rem; line-height: 1.4; }

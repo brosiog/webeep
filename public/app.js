@@ -1,5 +1,6 @@
 import { createClientMessageId } from './client-message-id.js';
 import { plainTextSnippet, renderRichText } from './rich-text.js';
+import { selectNewMessages } from './notify.js';
 
 const chatList = document.querySelector('#chat-list');
 const chatStatus = document.querySelector('#chat-status');
@@ -19,6 +20,8 @@ const inboxView = document.querySelector('#inbox-view');
 const contactsView = document.querySelector('#contacts-view');
 const contactList = document.querySelector('#contact-list');
 const contactsStatus = document.querySelector('#contacts-status');
+const notifyButton = document.querySelector('#notify-button');
+const toastStack = document.querySelector('#toast-stack');
 
 let selectedChat = null;
 let replyTarget = null;
@@ -31,6 +34,107 @@ let chatsById = new Map();
 let numbersByChatId = new Map();
 let displayedMessageSignature = '';
 let pollInFlight = false;
+let notificationsArmed = false;
+try {
+  notificationsArmed = window.localStorage.getItem('beeper-notifications') === '1';
+} catch {
+  // Storage unavailable; notifications stay off until toggled.
+}
+const latestMessageIdByChatId = new Map();
+const lastUnreadByChatId = new Map();
+
+function notificationsAvailable() {
+  return typeof window !== 'undefined' && 'Notification' in window;
+}
+
+function notificationsActive() {
+  return notificationsArmed && notificationsAvailable() && Notification.permission === 'granted';
+}
+
+function refreshNotifyButton() {
+  if (!notificationsAvailable()) {
+    notifyButton.hidden = true;
+    return;
+  }
+  notifyButton.hidden = false;
+  if (Notification.permission === 'denied') {
+    notifyButton.textContent = '🔕';
+    notifyButton.setAttribute('aria-label', 'Notifications blocked — allow them in your browser site settings');
+    notifyButton.title = 'Notifications blocked — allow them in your browser site settings';
+  } else if (notificationsActive()) {
+    notifyButton.textContent = '🔔';
+    notifyButton.setAttribute('aria-label', 'Turn off notifications');
+    notifyButton.title = 'Turn off notifications';
+  } else {
+    notifyButton.textContent = '🔕';
+    notifyButton.setAttribute('aria-label', 'Turn on notifications');
+    notifyButton.title = 'Turn on notifications';
+  }
+}
+
+function setNotificationsArmed(armed) {
+  notificationsArmed = armed;
+  try {
+    window.localStorage.setItem('beeper-notifications', armed ? '1' : '0');
+  } catch {
+    // Private browsing or disabled storage: the choice lasts for this visit.
+  }
+  refreshNotifyButton();
+}
+
+function showToast(chat, message, count) {
+  while (toastStack.children.length >= 3) toastStack.firstChild.remove();
+  const toast = document.createElement('button');
+  toast.type = 'button';
+  toast.className = 'toast';
+  const title = document.createElement('strong');
+  title.textContent = `${chat.title || 'New message'}${count > 1 ? ` (${count} new)` : ''}`;
+  const body = document.createElement('span');
+  body.textContent = `${message.sender}: ${plainTextSnippet(message.text) || '(no text)'}`;
+  toast.append(title, body);
+  const dismiss = window.setTimeout(() => toast.remove(), 6000);
+  toast.addEventListener('click', () => {
+    window.clearTimeout(dismiss);
+    toast.remove();
+    showInbox();
+    loadThread(chatsById.get(chat.id) ?? chat);
+  });
+  toastStack.append(toast);
+}
+
+async function notifyForChat(chat) {
+  let fresh = [];
+  try {
+    const data = await request(`/api/chats/${encodeURIComponent(chat.id)}/messages?limit=10`);
+    const selection = selectNewMessages(data.items, latestMessageIdByChatId.get(chat.id));
+    if (selection.latestId) latestMessageIdByChatId.set(chat.id, selection.latestId);
+    fresh = selection.fresh.filter((message) => message.sender !== 'You');
+  } catch {
+    return;
+  }
+  if (fresh.length === 0) return;
+  if (selectedChat?.id === chat.id && document.hasFocus() && !document.hidden) return;
+  const newest = fresh[fresh.length - 1];
+  if (notificationsActive()) {
+    try {
+      const notification = new Notification(chat.title || 'New message', {
+        body: fresh.length > 1
+          ? `${fresh.length} new messages, latest from ${newest.sender}: ${plainTextSnippet(newest.text) || '(no text)'}`
+          : `${newest.sender}: ${plainTextSnippet(newest.text) || '(no text)'}`,
+        tag: `beeper-${chat.id}`,
+      });
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+        showInbox();
+        loadThread(chatsById.get(chat.id) ?? chat);
+      };
+    } catch {
+      // OS-level delivery failed; the toast and title badge still surface it.
+    }
+  }
+  if (!document.hidden) showToast(chat, newest, fresh.length);
+}
 const POLL_INTERVAL_MS = 10_000;
 const REACTION_EMOJIS = ['❤️', '👍', '👎', '😂', '😮', '😢', '🙏', '🎉'];
 
@@ -454,6 +558,8 @@ async function refreshSelectedThread({ initialLoad = false } = {}) {
   try {
     const data = await request(`/api/chats/${encodeURIComponent(chat.id)}/messages?limit=50`);
     if (selectedChat?.id !== chat.id) return;
+    const seen = selectNewMessages(data.items, latestMessageIdByChatId.get(chat.id));
+    if (seen.latestId) latestMessageIdByChatId.set(chat.id, seen.latestId);
     const nextSignature = messageSignature(data.items);
     if (!initialLoad && nextSignature === displayedMessageSignature) return;
     const fallbackSender = numbersByChatId.get(chat.id) ?? chat.title ?? 'Unknown';
@@ -476,6 +582,13 @@ async function refreshChats({ quiet = false } = {}) {
     unreadCount.textContent = unread.total > 99 ? '99+' : unread.total;
     unreadCount.setAttribute('aria-label', `${unread.total} unread message${unread.total === 1 ? '' : 's'}`);
     unreadCount.hidden = unread.total === 0;
+    document.title = unread.total > 0 ? `(${(unread.total > 99 ? '99+' : unread.total)}) Beeper Web` : 'Beeper Web';
+    for (const chat of chats.items) {
+      const previous = lastUnreadByChatId.get(chat.id);
+      lastUnreadByChatId.set(chat.id, chat.unreadCount);
+      if (previous !== undefined && chat.unreadCount > previous) void notifyForChat(chat);
+    }
+    refreshNotifyButton();
     chatList.scrollTop = previousScrollTop;
     if (!quiet) setStatus(chatStatus, '');
   } catch {
@@ -485,9 +598,14 @@ async function refreshChats({ quiet = false } = {}) {
 }
 
 async function pollForUpdates() {
-  if (pollInFlight || document.hidden) return;
+  if (pollInFlight) return;
   pollInFlight = true;
   try {
+    // Keep watching unread counts while hidden so background chats can notify.
+    if (document.hidden) {
+      await refreshChats({ quiet: true });
+      return;
+    }
     if (!searchInput.value.trim()) await refreshChats({ quiet: true });
     await refreshSelectedThread();
     if (!contactsView.hidden) await refreshContacts();
@@ -549,6 +667,24 @@ try {
   // Storage unavailable; start expanded.
 }
 
+notifyButton.addEventListener('click', async () => {
+  if (!notificationsAvailable()) return;
+  if (Notification.permission === 'denied') {
+    setStatus(chatStatus, 'Notifications are blocked — allow them in your browser site settings.');
+    return;
+  }
+  if (Notification.permission === 'default') {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      setStatus(chatStatus, 'Notifications were not enabled.');
+      refreshNotifyButton();
+      return;
+    }
+  }
+  setNotificationsArmed(!notificationsArmed);
+  setStatus(chatStatus, notificationsArmed ? 'Notifications on.' : 'Notifications off.');
+});
+
 refreshButton.addEventListener('click', refreshChats);
 inboxButton.addEventListener('click', showInbox);
 contactsButton.addEventListener('click', showContacts);
@@ -593,6 +729,7 @@ sendForm.addEventListener('submit', async (event) => {
   }
 });
 
+refreshNotifyButton();
 refreshChats();
 window.setInterval(pollForUpdates, POLL_INTERVAL_MS);
 document.addEventListener('visibilitychange', () => {
