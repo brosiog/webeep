@@ -28,6 +28,8 @@ const toastStack = document.querySelector('#toast-stack');
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const POLL_INTERVAL_MS = 10_000;
 const REACTION_EMOJIS = ['❤️', '👍', '👎', '😂', '😮', '😢', '🙏', '🎉'];
+const REPLY_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>';
+const SMILE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
 
 let selectedChat = null;
 let replyTarget = null;
@@ -532,7 +534,7 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
       const replyButton = document.createElement('button');
       replyButton.type = 'button';
       replyButton.className = 'reply-button';
-      replyButton.textContent = '↩';
+      replyButton.innerHTML = REPLY_SVG;
       replyButton.setAttribute('aria-label', `Reply to message from ${message.sender || fallbackSender}`);
       replyButton.addEventListener('click', () => {
         setReplyTarget({ id: message.id, sender: message.sender || fallbackSender, text: message.text || '' });
@@ -541,7 +543,7 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
       const reactButton = document.createElement('button');
       reactButton.type = 'button';
       reactButton.className = 'react-button';
-      reactButton.textContent = '🙂';
+      reactButton.innerHTML = SMILE_SVG;
       reactButton.setAttribute('aria-label', `React to message from ${message.sender || fallbackSender}`);
       const palette = renderReactionPalette(chatId, message.id);
       reactButton.addEventListener('click', () => {
