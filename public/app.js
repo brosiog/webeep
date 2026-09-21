@@ -27,6 +27,36 @@ const contactList = document.querySelector('#contact-list');
 const contactsStatus = document.querySelector('#contacts-status');
 const notifyButton = document.querySelector('#notify-button');
 const toastStack = document.querySelector('#toast-stack');
+const settingsButton = document.querySelector('#settings-button');
+const settingsMenu = document.querySelector('#settings-menu');
+const themeAeroButton = document.querySelector('#theme-aero');
+const themeMinimalButton = document.querySelector('#theme-minimal');
+const minimalStylesheet = document.querySelector('#minimal-stylesheet');
+const THEME_KEY = 'beeper-theme';
+
+function currentTheme() {
+  try {
+    return window.localStorage.getItem(THEME_KEY) === 'minimal' ? 'minimal' : 'aero';
+  } catch {
+    return 'aero';
+  }
+}
+
+function applyTheme(name) {
+  minimalStylesheet.disabled = name !== 'minimal';
+  themeAeroButton.setAttribute('aria-checked', String(name === 'aero'));
+  themeMinimalButton.setAttribute('aria-checked', String(name === 'minimal'));
+  try {
+    window.localStorage.setItem(THEME_KEY, name);
+  } catch {
+    // Private browsing or disabled storage: the choice lasts for this visit.
+  }
+}
+
+function closeSettings() {
+  settingsMenu.hidden = true;
+  settingsButton.setAttribute('aria-expanded', 'false');
+}
 
 const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const POLL_INTERVAL_MS = 10_000;
@@ -354,7 +384,7 @@ function makeAvatar(text, id) {
   const avatar = document.createElement('span');
   avatar.className = 'chat-avatar';
   avatar.textContent = (text || 'U').trim().charAt(0).toUpperCase();
-  avatar.style.background = avatarGradient(id ?? text);
+  avatar.style.setProperty('--avatar-gradient', avatarGradient(id ?? text));
   avatar.setAttribute('aria-hidden', 'true');
   return avatar;
 }
@@ -634,7 +664,7 @@ async function loadThread(chat) {
   }
   threadTitle.textContent = chat.title || 'Untitled chat';
   threadAvatar.textContent = (chat.title || 'B').trim().charAt(0).toUpperCase();
-  threadAvatar.style.background = avatarGradient(chat.id);
+  threadAvatar.style.setProperty('--avatar-gradient', avatarGradient(chat.id));
   threadStatusLine.textContent = threadStatusText(chat);
   sendForm.hidden = false;
   setStatus(threadStatus, 'Loading messages…');
@@ -752,9 +782,11 @@ searchForm.addEventListener('submit', async (event) => {
 
 document.addEventListener('click', (event) => {
   if (!event.target.closest('.reaction-palette') && !event.target.closest('.react-button')) closeOpenPalettes();
+  if (!event.target.closest('#settings-menu') && !event.target.closest('#settings-button')) closeSettings();
 });
 
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeSettings();
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     const tag = document.activeElement?.tagName;
     if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
@@ -883,6 +915,28 @@ sendForm.addEventListener('submit', async (event) => {
   }
 });
 
+settingsButton.addEventListener('click', () => {
+  const willOpen = settingsMenu.hidden;
+  if (willOpen) {
+    applyTheme(currentTheme());
+    settingsMenu.hidden = false;
+    settingsButton.setAttribute('aria-expanded', 'true');
+  } else {
+    closeSettings();
+  }
+});
+
+themeAeroButton.addEventListener('click', () => {
+  applyTheme('aero');
+  closeSettings();
+});
+
+themeMinimalButton.addEventListener('click', () => {
+  applyTheme('minimal');
+  closeSettings();
+});
+
+applyTheme(currentTheme());
 refreshNotifyButton();
 refreshChats();
 window.setInterval(pollForUpdates, POLL_INTERVAL_MS);
