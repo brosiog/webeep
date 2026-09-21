@@ -23,7 +23,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .app-shell.sidebar-collapsed { grid-template-columns: 88px 78px minmax(0, 1fr); }
 .sidebar-collapsed .sidebar-header { flex-direction: column; gap: .6rem; padding: 1.25rem .5rem; }
 .sidebar-collapsed .sidebar-header div { display: none; }
-.sidebar-collapsed .search-form, .sidebar-collapsed .list-heading, .sidebar-collapsed .status, .sidebar-collapsed .chat-copy, .sidebar-collapsed .contact-copy, .sidebar-collapsed .contact-form, .sidebar-collapsed .contacts-heading { display: none; }
+.sidebar-collapsed .search-form, .sidebar-collapsed .list-heading, .sidebar-collapsed .sidebar .status, .sidebar-collapsed .chat-copy, .sidebar-collapsed .contact-copy, .sidebar-collapsed .contact-form, .sidebar-collapsed .contacts-heading { display: none; }
 .sidebar-collapsed .chat-avatar { display: grid; width: 40px; aspect-ratio: 1; place-items: center; border-radius: 50%; color: #fff; background: #81998a; font-size: .85rem; font-weight: 800; }
 .sidebar-collapsed .chat-list, .sidebar-collapsed .contact-list { padding: 0 .5rem 1rem; }
 .sidebar-collapsed .chat-button, .sidebar-collapsed .contact-card { position: relative; grid-template-columns: minmax(0, 1fr); justify-items: center; padding: .6rem .25rem; }
