@@ -15,7 +15,7 @@
   --bg-hover: rgba(15, 40, 80, .06);
   --bg-selected: linear-gradient(180deg, #edf4ff 0%, #d6e9fd 100%);
   --selected-bar: #0a84ff;
-  --bg-bubble: linear-gradient(180deg, #f3f6fb 0%, #e3e9f2 55%, #d4dde9 100%);
+  --bg-bubble: linear-gradient(180deg, #f6f6f6 0%, #e9e9e9 55%, #dbdbdb 100%);
   --bg-bubble-own: linear-gradient(180deg, #d9ecff 0%, #b3d6fb 55%, #9dc9f9 100%);
   --bubble-own-text: #16233a;
   --bg-chip: rgba(255, 255, 255, .9);
