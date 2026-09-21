@@ -25,6 +25,7 @@ function messageProjection(message, chatTitle = '', senderLabelByID = new Map(),
     return projected;
   }).filter((attachment) => attachment.assetURL);
   const reactions = (message.reactions ?? []).map((reaction) => reactionProjection(reaction, senderLabelByID)).filter(Boolean);
+  const replyToMessageId = typeof message.linkedMessageID === 'string' && message.linkedMessageID ? message.linkedMessageID : '';
   return {
     id: message.id,
     chatId: message.chatID,
@@ -33,6 +34,7 @@ function messageProjection(message, chatTitle = '', senderLabelByID = new Map(),
     text: message.text ?? '',
     ...(attachments.length ? { attachments } : {}),
     ...(reactions.length ? { reactions } : {}),
+    ...(replyToMessageId ? { replyToMessageId } : {}),
     timestamp: message.timestamp,
   };
 }
@@ -77,8 +79,11 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
     async serveAsset(url) {
       return client.assets.serve({ url });
     },
-    async sendText({ chatId, text }) {
-      const result = await client.messages.send(chatId, { text });
+    async sendText({ chatId, text, replyToMessageId }) {
+      const result = await client.messages.send(chatId, {
+        text,
+        ...(replyToMessageId ? { replyToMessageID: replyToMessageId } : {}),
+      });
       return { id: result.pendingMessageID };
     },
     async sendReaction({ chatId, messageId, emoji }) {
@@ -95,7 +100,10 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
 /** Deterministic local fixture; it never opens a network connection. */
 export function createMockService() {
   const chats = [{ id: 'chat-1', title: 'Family', type: 'group', unreadCount: 2, preview: 'Dinner at six?' }];
-  const messages = [{ id: 'message-1', chatId: 'chat-1', sender: 'Alex', text: 'Dinner at six?', reactions: [{ key: '❤️', participant: 'Alex' }], timestamp: '2026-09-20T12:00:00.000Z' }];
+  const messages = [
+    { id: 'message-1', chatId: 'chat-1', sender: 'Alex', text: 'Dinner at six?', reactions: [{ key: '❤️', participant: 'Alex' }], timestamp: '2026-09-20T12:00:00.000Z' },
+    { id: 'message-2', chatId: 'chat-1', sender: 'You', text: 'Yes, see you at six!', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:01:00.000Z' },
+  ];
   let nextId = 1;
   return {
     async listChats() { return chats; },
@@ -105,8 +113,9 @@ export function createMockService() {
       const needle = query.toLowerCase();
       return messages.filter((message) => message.text.toLowerCase().includes(needle)).slice(0, limit).map((message) => ({ ...message, chatTitle: 'Family' }));
     },
-    async sendText({ chatId, text, clientMessageId }) {
+    async sendText({ chatId, text, clientMessageId, replyToMessageId }) {
       const message = { id: `pending-${nextId++}`, chatId, sender: 'You', text, timestamp: '2026-09-20T12:01:00.000Z', clientMessageId };
+      if (replyToMessageId) message.replyToMessageId = replyToMessageId;
       messages.push(message);
       return { id: message.id };
     },

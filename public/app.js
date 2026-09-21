@@ -20,6 +20,11 @@ const contactList = document.querySelector('#contact-list');
 const contactsStatus = document.querySelector('#contacts-status');
 
 let selectedChat = null;
+let replyTarget = null;
+const replyBar = document.createElement('div');
+replyBar.className = 'reply-bar';
+replyBar.hidden = true;
+sendForm.before(replyBar);
 let chatsById = new Map();
 let numbersByChatId = new Map();
 let displayedMessageSignature = '';
@@ -151,7 +156,46 @@ function showInbox() {
 }
 
 function messageSignature(messages) {
-  return messages.map((message) => `${message.id}:${message.timestamp}:${message.sender}:${message.text}:${(message.reactions ?? []).map((reaction) => `${reaction.key}=${reaction.participant}`).join(',')}`).join('|');
+  return messages.map((message) => `${message.id}:${message.timestamp}:${message.sender}:${message.text}:${message.replyToMessageId ?? ''}:${(message.reactions ?? []).map((reaction) => `${reaction.key}=${reaction.participant}`).join(',')}`).join('|');
+}
+
+function snippet(text, max = 120) {
+  const normalized = (text ?? '').replace(/\s+/g, ' ').trim();
+  return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
+}
+
+function setReplyTarget(target) {
+  replyTarget = target;
+  replyBar.replaceChildren();
+  if (!target) {
+    replyBar.hidden = true;
+    return;
+  }
+  const label = document.createElement('span');
+  label.className = 'reply-bar-label';
+  label.textContent = `Replying to ${target.sender}`;
+  const quote = document.createElement('span');
+  quote.className = 'reply-bar-quote';
+  quote.textContent = snippet(target.text) || '(no text)';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'reply-bar-cancel';
+  cancel.textContent = '✕';
+  cancel.setAttribute('aria-label', 'Cancel reply');
+  cancel.addEventListener('click', () => {
+    setReplyTarget(null);
+    messageInput.focus();
+  });
+  replyBar.append(label, quote, cancel);
+  replyBar.hidden = false;
+}
+
+function scrollToMessage(messageId) {
+  const target = messageList.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
+  if (!target) return;
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  target.classList.add('is-highlighted');
+  window.setTimeout(() => target.classList.remove('is-highlighted'), 1600);
 }
 
 async function reactToMessage(chatId, messageId, emoji) {
@@ -277,9 +321,11 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
   const previousScrollHeight = messageList.scrollHeight;
   messageList.replaceChildren();
   const chronological = [...messages].sort((a, b) => new Date(a.timestamp).valueOf() - new Date(b.timestamp).valueOf());
+  const messageById = new Map(chronological.map((message) => [message.id, message]));
   for (const message of chronological) {
     const item = document.createElement('li');
     item.className = 'message';
+    if (message.id) item.dataset.messageId = message.id;
     if (message.sender === 'You') item.classList.add('is-own');
     const sender = document.createElement('strong');
     sender.textContent = message.sender || fallbackSender;
@@ -288,7 +334,22 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
     const time = document.createElement('time');
     time.dateTime = message.timestamp || '';
     time.textContent = formatTimestamp(message.timestamp);
-    item.append(sender, text);
+    item.append(sender);
+    if (message.replyToMessageId) {
+      const original = messageById.get(message.replyToMessageId);
+      const quote = document.createElement('button');
+      quote.type = 'button';
+      quote.className = 'reply-quote';
+      const quoteSender = document.createElement('strong');
+      quoteSender.textContent = original ? (original.sender || fallbackSender) : 'Original message';
+      const quoteText = document.createElement('span');
+      quoteText.textContent = original ? (snippet(original.text) || '(no text)') : 'Not loaded in this thread';
+      quote.append(quoteSender, quoteText);
+      if (original) quote.addEventListener('click', () => scrollToMessage(message.replyToMessageId));
+      else quote.disabled = true;
+      item.append(quote);
+    }
+    item.append(text);
     for (const attachment of message.attachments ?? []) {
       if (attachment.url) item.append(renderAttachment(attachment));
     }
@@ -299,6 +360,15 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
     footer.className = 'message-footer';
     footer.append(time);
     if (chatId && message.id) {
+      const replyButton = document.createElement('button');
+      replyButton.type = 'button';
+      replyButton.className = 'reply-button';
+      replyButton.textContent = '↩';
+      replyButton.setAttribute('aria-label', `Reply to message from ${message.sender || fallbackSender}`);
+      replyButton.addEventListener('click', () => {
+        setReplyTarget({ id: message.id, sender: message.sender || fallbackSender, text: message.text || '' });
+        messageInput.focus();
+      });
       const reactButton = document.createElement('button');
       reactButton.type = 'button';
       reactButton.className = 'react-button';
@@ -310,7 +380,7 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
         closeOpenPalettes(palette);
         palette.hidden = !willOpen;
       });
-      footer.append(reactButton);
+      footer.append(replyButton, reactButton);
       item.append(footer, palette);
     } else {
       item.append(footer);
@@ -335,6 +405,7 @@ async function loadThread(chat) {
   setStatus(threadStatus, 'Loading messages…');
   messageList.replaceChildren();
   displayedMessageSignature = '';
+  setReplyTarget(null);
   await refreshSelectedThread({ initialLoad: true });
 }
 
@@ -439,10 +510,12 @@ sendForm.addEventListener('submit', async (event) => {
         text,
         confirmed: true,
         clientMessageId: createClientMessageId(),
+        ...(replyTarget ? { replyToMessageId: replyTarget.id } : {}),
       }),
     });
     messageInput.value = '';
     messageInput.style.height = '';
+    setReplyTarget(null);
     await Promise.all([loadThread(selectedChat), refreshChats()]);
   } catch {
     setStatus(threadStatus, 'Unable to send message.');

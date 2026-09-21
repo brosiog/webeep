@@ -116,6 +116,16 @@ test('text send validates content and idempotency key', async () => {
   const response = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: ' ', clientMessageId: 'short', confirmed: true }) });
   assert.equal(response.status, 400); assert.deepEqual(await response.json(), { error: 'invalid_request' });
 });
+test('text send supports replies and validates the reply target', async () => {
+  const clientMessageId = 'reply-0001';
+  const response = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'On my way', clientMessageId, confirmed: true, replyToMessageId: 'message-1' }) });
+  assert.equal(response.status, 201); assert.deepEqual(await response.json(), { id: 'sent-1', status: 'sent' });
+  assert.deepEqual(sentMessages.find((entry) => entry.clientMessageId === clientMessageId), { chatId: 'chat-1', text: 'On my way', clientMessageId, replyToMessageId: 'message-1' });
+  const empty = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'On my way', clientMessageId: 'reply-0002', confirmed: true, replyToMessageId: '' }) });
+  assert.equal(empty.status, 400); assert.deepEqual(await empty.json(), { error: 'invalid_request' });
+  const wrongType = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'On my way', clientMessageId: 'reply-0003', confirmed: true, replyToMessageId: 42 }) });
+  assert.equal(wrongType.status, 400); assert.deepEqual(await wrongType.json(), { error: 'invalid_request' });
+});
 
 test('client message identifiers fall back to random values when UUIDs are unavailable', () => {
   const id = createClientMessageId({

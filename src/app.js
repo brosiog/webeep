@@ -33,13 +33,19 @@ function contentTypeIsJson(value) {
   return typeof value === 'string' && value.split(';', 1)[0].trim().toLowerCase() === 'application/json';
 }
 
+function validReplyToMessageId(value) {
+  return value === undefined
+    || (typeof value === 'string' && value.length > 0 && value.length <= 256);
+}
+
 function validTextSend(body) {
   return body?.confirmed === true
     && typeof body.text === 'string'
     && body.text.trim().length > 0
     && body.text.length <= 4_000
     && typeof body.clientMessageId === 'string'
-    && /^[A-Za-z0-9_-]{8,128}$/.test(body.clientMessageId);
+    && /^[A-Za-z0-9_-]{8,128}$/.test(body.clientMessageId)
+    && validReplyToMessageId(body.replyToMessageId);
 }
 
 function attachmentForClient(attachment) {
@@ -139,7 +145,7 @@ export function createApp({ service, contacts = { async getLabelsForChats() { re
         const chatId = decodeURIComponent(sendMatch[1]);
         const key = `${chatId}:${body.clientMessageId}`;
         if (!idempotentSends.has(key)) {
-          idempotentSends.set(key, service.sendText({ chatId, text: body.text, clientMessageId: body.clientMessageId })
+          idempotentSends.set(key, service.sendText({ chatId, text: body.text, clientMessageId: body.clientMessageId, ...(body.replyToMessageId ? { replyToMessageId: body.replyToMessageId } : {}) })
             .then((result) => ({ id: result.id, status: 'sent' }))
             .catch((error) => { idempotentSends.delete(key); throw error; }));
         }
