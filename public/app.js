@@ -14,6 +14,49 @@ const sendForm = document.querySelector('#send-form');
 const messageInput = document.querySelector('#message-input');
 const refreshButton = document.querySelector('#refresh-button');
 const sendButton = document.querySelector('.send-button');
+const addButton = document.querySelector('.add-button');
+const fileInput = document.querySelector('#file-input');
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+let pendingAttachment = null;
+const attachBar = document.createElement('div');
+attachBar.className = 'reply-bar';
+attachBar.hidden = true;
+sendForm.before(attachBar);
+
+function renderAttachBar() {
+  attachBar.replaceChildren();
+  if (!pendingAttachment) {
+    attachBar.hidden = true;
+    return;
+  }
+  const label = document.createElement('span');
+  label.className = 'reply-bar-label';
+  label.textContent = '📎 Attached';
+  const quote = document.createElement('span');
+  quote.className = 'reply-bar-quote';
+  quote.textContent = `${pendingAttachment.file.name} (${formatFileSize(pendingAttachment.file.size)})`;
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'reply-bar-cancel';
+  cancel.textContent = '✕';
+  cancel.setAttribute('aria-label', 'Remove attachment');
+  cancel.addEventListener('click', () => {
+    pendingAttachment = null;
+    fileInput.value = '';
+    renderAttachBar();
+  });
+  attachBar.append(label, quote, cancel);
+  attachBar.hidden = false;
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',', 2)[1] ?? '');
+    reader.onerror = () => reject(new Error('read_failed'));
+    reader.readAsDataURL(file);
+  });
+}
 const inboxButton = document.querySelector('#inbox-button');
 const contactsButton = document.querySelector('#contacts-button');
 const inboxView = document.querySelector('#inbox-view');
@@ -549,6 +592,9 @@ async function loadThread(chat) {
   displayedMessageSignature = '';
   threadPinnedToBottom = true;
   setReplyTarget(null);
+  pendingAttachment = null;
+  fileInput.value = '';
+  renderAttachBar();
   await refreshSelectedThread({ initialLoad: true });
 }
 
@@ -701,12 +747,27 @@ messageInput.addEventListener('keydown', (event) => {
   }
 });
 
+addButton.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  if (file.size === 0 || file.size > MAX_ATTACHMENT_BYTES) {
+    setStatus(threadStatus, 'That file must be between 1 byte and 25 MB.');
+    fileInput.value = '';
+    return;
+  }
+  pendingAttachment = { file };
+  renderAttachBar();
+});
+
 sendForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const text = messageInput.value.trim();
-  if (!selectedChat || !text) return;
+  const attachmentFile = pendingAttachment?.file;
+  if (!selectedChat || (!text && !attachmentFile)) return;
   sendButton.disabled = true;
-  setStatus(threadStatus, 'Sending…');
+  setStatus(threadStatus, attachmentFile ? 'Uploading…' : 'Sending…');
   try {
     await request(`/api/chats/${encodeURIComponent(selectedChat.id)}/messages`, {
       method: 'POST',
@@ -716,10 +777,20 @@ sendForm.addEventListener('submit', async (event) => {
         confirmed: true,
         clientMessageId: createClientMessageId(),
         ...(replyTarget ? { replyToMessageId: replyTarget.id } : {}),
+        ...(attachmentFile ? {
+          attachment: {
+            fileName: attachmentFile.name,
+            mimeType: attachmentFile.type || 'application/octet-stream',
+            data: await readFileAsBase64(attachmentFile),
+          },
+        } : {}),
       }),
     });
     messageInput.value = '';
     messageInput.style.height = '';
+    pendingAttachment = null;
+    fileInput.value = '';
+    renderAttachBar();
     setReplyTarget(null);
     await Promise.all([loadThread(selectedChat), refreshChats()]);
   } catch {

@@ -1,5 +1,7 @@
 import BeeperDesktop from '@beeper/desktop-api';
 
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
 function reactionProjection(reaction, senderLabelByID = new Map()) {
   if (typeof reaction?.reactionKey !== 'string' || !reaction.reactionKey.trim()) return null;
   const projected = {
@@ -81,10 +83,25 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
     async serveAsset(url) {
       return client.assets.serve({ url });
     },
-    async sendText({ chatId, text, replyToMessageId }) {
+    async sendText({ chatId, text, replyToMessageId, attachment }) {
+      let attachmentParam;
+      if (attachment) {
+        const bytes = Buffer.from(attachment.data, 'base64');
+        if (bytes.byteLength === 0 || bytes.byteLength > MAX_ATTACHMENT_BYTES) {
+          throw Object.assign(new Error('attachment_too_large'), { status: 413 });
+        }
+        const upload = await client.assets.uploadBase64({
+          content: attachment.data,
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+        });
+        if (!upload.uploadID) throw new Error('upload_failed');
+        attachmentParam = { uploadID: upload.uploadID, fileName: attachment.fileName, mimeType: attachment.mimeType };
+      }
       const result = await client.messages.send(chatId, {
-        text,
+        ...(text ? { text } : {}),
         ...(replyToMessageId ? { replyToMessageID: replyToMessageId } : {}),
+        ...(attachmentParam ? { attachment: attachmentParam } : {}),
       });
       return { id: result.pendingMessageID };
     },
@@ -117,11 +134,33 @@ export function createMockService() {
       const needle = query.toLowerCase();
       return messages.filter((message) => message.type !== 'REACTION' && message.text.toLowerCase().includes(needle)).slice(0, limit).map((message) => ({ ...message, chatTitle: 'Family' }));
     },
-    async sendText({ chatId, text, clientMessageId, replyToMessageId }) {
-      const message = { id: `pending-${nextId++}`, chatId, sender: 'You', text, timestamp: '2026-09-20T12:01:00.000Z', clientMessageId };
+    async sendText({ chatId, text, clientMessageId, replyToMessageId, attachment }) {
+      const id = `pending-${nextId++}`;
+      const message = { id, chatId, sender: 'You', text: text ?? '', timestamp: '2026-09-20T12:01:00.000Z', clientMessageId };
       if (replyToMessageId) message.replyToMessageId = replyToMessageId;
+      if (attachment) {
+        const bytes = Buffer.from(attachment.data, 'base64');
+        message.attachments = [{
+          assetURL: `localmxc://mock/${id}`,
+          type: attachment.mimeType.startsWith('image/') ? 'img' : attachment.mimeType.startsWith('video/') ? 'video' : attachment.mimeType.startsWith('audio/') ? 'audio' : 'file',
+          fileName: attachment.fileName,
+          mimeType: attachment.mimeType,
+          fileSize: bytes.byteLength,
+          data: attachment.data,
+        }];
+      }
       messages.push(message);
       return { id: message.id };
+    },
+    async serveAsset(url) {
+      const found = messages.flatMap((message) => message.attachments ?? []).find((item) => item.assetURL === url);
+      if (!found?.data) return { ok: false, status: 404, headers: new Map(), body: null };
+      return {
+        ok: true,
+        status: 200,
+        headers: new Map([['content-type', found.mimeType]]),
+        body: new Blob([Buffer.from(found.data, 'base64')]).stream(),
+      };
     },
     async sendReaction({ chatId, messageId, emoji }) {
       const message = messages.find((item) => item.chatId === chatId && item.id === messageId);

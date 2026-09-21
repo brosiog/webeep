@@ -40,7 +40,7 @@ Bridge QR login and any OAuth authorization are user-performed steps in the Beep
 - `GET /api/unread-count`
 - `GET /api/chats/:chatId/messages?limit=50`
 - `GET /api/search?q=...&limit=20`
-- `POST /api/chats/:chatId/messages` with `{ "text", "confirmed": true, "clientMessageId" }` (optional `replyToMessageId` sends it as a reply)
+- `POST /api/chats/:chatId/messages` with `{ "text", "confirmed": true, "clientMessageId" }` (optional `replyToMessageId` sends it as a reply; optional `attachment: { fileName, mimeType, data }` with base64 `data` uploads and attaches a file up to 25 MB — `text` may then be empty)
 - `POST /api/chats/:chatId/messages/:messageId/reactions` with `{ "emoji" }`
 - `DELETE /api/chats/:chatId/messages/:messageId/reactions/:emoji`
 

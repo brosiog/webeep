@@ -112,6 +112,19 @@ test('confirmed text send is idempotent by chat and client message id', async ()
   assert.deepEqual(await first.json(), { id: 'sent-1', status: 'sent' }); assert.deepEqual(await second.json(), { id: 'sent-1', status: 'sent' });
   assert.deepEqual(sentMessages, [{ chatId: 'chat-1', text: 'See you soon', clientMessageId: 'send-0002' }]);
 });
+test('attachment-only and captioned sends pass the attachment through', async () => {
+  const attachment = { fileName: 'photo.jpg', mimeType: 'image/jpeg', data: 'aGVsbG8=' };
+  const bare = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: '', clientMessageId: 'attach-0001', confirmed: true, attachment }) });
+  assert.equal(bare.status, 201); assert.deepEqual(await bare.json(), { id: 'sent-1', status: 'sent' });
+  assert.deepEqual(sentMessages.find((entry) => entry.clientMessageId === 'attach-0001').attachment, attachment);
+  const captioned = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: 'Look at this', clientMessageId: 'attach-0002', confirmed: true, replyToMessageId: 'message-1', attachment }) });
+  assert.equal(captioned.status, 201);
+  assert.deepEqual(sentMessages.find((entry) => entry.clientMessageId === 'attach-0002'), { chatId: 'chat-1', text: 'Look at this', clientMessageId: 'attach-0002', replyToMessageId: 'message-1', attachment });
+  const badMime = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: '', clientMessageId: 'attach-0003', confirmed: true, attachment: { ...attachment, mimeType: 'not-a-mime' } }) });
+  assert.equal(badMime.status, 400); assert.deepEqual(await badMime.json(), { error: 'invalid_request' });
+  const badData = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: '', clientMessageId: 'attach-0004', confirmed: true, attachment: { ...attachment, data: '***not-base64***' } }) });
+  assert.equal(badData.status, 400); assert.deepEqual(await badData.json(), { error: 'invalid_request' });
+});
 test('text send validates content and idempotency key', async () => {
   const response = await fetch(`${baseUrl}/api/chats/chat-1/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: ' ', clientMessageId: 'short', confirmed: true }) });
   assert.equal(response.status, 400); assert.deepEqual(await response.json(), { error: 'invalid_request' });

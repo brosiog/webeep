@@ -3,22 +3,24 @@ import { Readable } from 'node:stream';
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 const MAX_BODY_BYTES = 16_384;
+// Room for a ~25 MB file plus base64 overhead on message sends.
+const MAX_MESSAGE_BYTES = 36_000_000;
 
 function json(response, status, body) {
   response.writeHead(status, JSON_HEADERS);
   response.end(JSON.stringify(body));
 }
 
-function readJson(request) {
+function readJson(request, maxBytes = MAX_BODY_BYTES) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     request.on('data', (chunk) => {
       size += chunk.length;
-      if (size <= MAX_BODY_BYTES) chunks.push(chunk);
+      if (size <= maxBytes) chunks.push(chunk);
     });
     request.on('end', () => {
-      if (size > MAX_BODY_BYTES) return reject(new Error('body_too_large'));
+      if (size > maxBytes) return reject(new Error('body_too_large'));
       try {
         resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
       } catch {
@@ -38,14 +40,30 @@ function validReplyToMessageId(value) {
     || (typeof value === 'string' && value.length > 0 && value.length <= 256);
 }
 
-function validTextSend(body) {
-  return body?.confirmed === true
-    && typeof body.text === 'string'
-    && body.text.trim().length > 0
-    && body.text.length <= 4_000
-    && typeof body.clientMessageId === 'string'
-    && /^[A-Za-z0-9_-]{8,128}$/.test(body.clientMessageId)
-    && validReplyToMessageId(body.replyToMessageId);
+function validAttachment(value) {
+  return typeof value === 'object'
+    && value !== null
+    && typeof value.fileName === 'string'
+    && value.fileName.length > 0
+    && value.fileName.length <= 255
+    && !/[\u0000-\u001F\u007F/\\]/.test(value.fileName)
+    && typeof value.mimeType === 'string'
+    && value.mimeType.length <= 128
+    && /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/i.test(value.mimeType)
+    && typeof value.data === 'string'
+    && value.data.length > 0
+    && value.data.length <= 34_000_000
+    && /^[A-Za-z0-9+/]*={0,2}$/.test(value.data);
+}
+
+function validMessageSend(body) {
+  if (!body || body.confirmed !== true) return false;
+  if (typeof body.clientMessageId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(body.clientMessageId)) return false;
+  if (!validReplyToMessageId(body.replyToMessageId)) return false;
+  const text = typeof body.text === 'string' ? body.text : '';
+  if (text.length > 4_000) return false;
+  if (body.attachment !== undefined && !validAttachment(body.attachment)) return false;
+  return text.trim().length > 0 || body.attachment !== undefined;
 }
 
 function attachmentForClient(attachment) {
@@ -139,13 +157,13 @@ export function createApp({ service, contacts = { async getLabelsForChats() { re
       const sendMatch = request.method === 'POST' && url.pathname.match(/^\/api\/chats\/([^/]+)\/messages$/);
       if (sendMatch) {
         if (!contentTypeIsJson(request.headers['content-type'])) return json(response, 415, { error: 'unsupported_media_type' });
-        const body = await readJson(request);
+        const body = await readJson(request, MAX_MESSAGE_BYTES);
         if (body?.confirmed !== true) return json(response, 400, { error: 'confirmation_required' });
-        if (!validTextSend(body)) return json(response, 400, { error: 'invalid_request' });
+        if (!validMessageSend(body)) return json(response, 400, { error: 'invalid_request' });
         const chatId = decodeURIComponent(sendMatch[1]);
         const key = `${chatId}:${body.clientMessageId}`;
         if (!idempotentSends.has(key)) {
-          idempotentSends.set(key, service.sendText({ chatId, text: body.text, clientMessageId: body.clientMessageId, ...(body.replyToMessageId ? { replyToMessageId: body.replyToMessageId } : {}) })
+          idempotentSends.set(key, service.sendText({ chatId, text: body.text ?? '', clientMessageId: body.clientMessageId, ...(body.replyToMessageId ? { replyToMessageId: body.replyToMessageId } : {}), ...(body.attachment ? { attachment: body.attachment } : {}) })
             .then((result) => ({ id: result.id, status: 'sent' }))
             .catch((error) => { idempotentSends.delete(key); throw error; }));
         }
