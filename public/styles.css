@@ -140,7 +140,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .sidebar-toggle:hover { background: var(--bg-hover); }
 .chat-avatar { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #233451; outline: 1px solid rgba(255, 255, 255, .35); outline-offset: -1px; background: var(--avatar-bg); font-size: 1.05rem; font-weight: 700; box-shadow: inset 0 2px 3px rgba(255, 255, 255, .55), inset 0 -4px 6px rgba(0, 0, 0, .22), 0 3px 8px var(--shadow), var(--glow-avatar); text-shadow: 0 1px 0 rgba(255, 255, 255, .55); }
 .app-shell.sidebar-collapsed { grid-template-columns: 76px 92px minmax(0, 1fr); }
-.sidebar-collapsed .sidebar-header { flex-direction: column; gap: .6rem; padding: 1rem .5rem .8rem; }
+.sidebar-collapsed .sidebar-header { flex-direction: column; gap: .6rem; padding: 1rem .5rem .8rem; border-bottom-color: transparent; background: transparent; box-shadow: none; }
 .sidebar-collapsed .sidebar-header div { display: none; }
 .sidebar-collapsed .search-form, .sidebar-collapsed .list-heading, .sidebar-collapsed .sidebar .status, .sidebar-collapsed .chat-copy, .sidebar-collapsed .chat-meta, .sidebar-collapsed .contact-copy, .sidebar-collapsed .contact-form, .sidebar-collapsed .contacts-heading { display: none; }
 .sidebar-collapsed .chat-avatar { width: 44px; height: 44px; }
