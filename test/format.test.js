@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { avatarGradient, avatarHue, formatChatTime } from '../public/format.js';
+import { AVATAR_GRADIENTS, avatarGradient, formatChatTime } from '../public/format.js';
 
-test('avatar hues are stable and bounded', () => {
-  assert.equal(avatarHue('chat-1'), avatarHue('chat-1'));
-  assert.ok(avatarHue('chat-1') >= 0 && avatarHue('chat-1') < 360);
-  assert.ok(avatarHue('') >= 0 && avatarHue('') < 360);
-  assert.match(avatarGradient('chat-1'), /^linear-gradient\(135deg, hsl\(\d+, 72%, 58%\), hsl\(\d+, 68%, 42%\)\)$/);
+test('avatar gradients are stable winter pastels', () => {
+  assert.equal(avatarGradient('chat-1'), avatarGradient('chat-1'));
+  assert.ok(AVATAR_GRADIENTS.map(([from, to]) => `linear-gradient(135deg, ${from}, ${to})`).includes(avatarGradient('chat-1')));
+  assert.ok(AVATAR_GRADIENTS.map(([from, to]) => `linear-gradient(135deg, ${from}, ${to})`).includes(avatarGradient('')));
 });
 
 test('chat times compress to today, yesterday, or date', () => {
