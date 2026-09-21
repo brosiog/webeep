@@ -1,0 +1,54 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #202124;
+  background: #f6f7f8;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  padding: 1rem;
+  border-right: 1px solid #d9dce1;
+  background: #fff;
+}
+
+.sidebar-header h1, .thread-header h2 { margin: 0; }
+.sidebar-header p, .send-note { color: #5f6368; }
+.search-form { margin: 1.5rem 0 1rem; }
+.search-form label, .send-form label { display: block; margin-bottom: .35rem; font-weight: 600; }
+.search-row, .send-row { display: flex; gap: .5rem; }
+input, textarea { width: 100%; padding: .55rem; border: 1px solid #aeb4bc; border-radius: .25rem; }
+textarea { resize: vertical; }
+button { padding: .55rem .8rem; border: 1px solid #5c6f82; border-radius: .25rem; background: #fff; color: #202124; }
+button:hover, button:focus-visible { background: #eef4fa; }
+button:disabled { cursor: wait; opacity: .6; }
+.status { min-height: 1.25rem; color: #5f6368; }
+
+.chat-list, .message-list { margin: 0; padding: 0; list-style: none; }
+.chat-list li { padding: .5rem 0; border-bottom: 1px solid #edf0f2; }
+.chat-button { width: 100%; padding: .25rem 0; border: 0; border-radius: 0; background: transparent; text-align: left; font-weight: 600; }
+.preview { display: block; overflow: hidden; color: #5f6368; font-size: .9rem; text-overflow: ellipsis; white-space: nowrap; }
+
+.thread { display: flex; min-width: 0; flex-direction: column; padding: 1.25rem; }
+.message-list { flex: 1; overflow: auto; }
+.message { max-width: 48rem; padding: .75rem 0; border-bottom: 1px solid #e3e6e8; }
+.message p { margin: .25rem 0; white-space: pre-wrap; }
+time { color: #5f6368; font-size: .85rem; }
+.send-form { margin-top: 1rem; border-top: 1px solid #d9dce1; padding-top: 1rem; }
+.send-row textarea { min-height: 3rem; }
+.send-note { margin: .4rem 0 0; font-size: .85rem; }
+
+@media (max-width: 700px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { border-right: 0; border-bottom: 1px solid #d9dce1; }
+  .thread { min-height: 60vh; }
+}
