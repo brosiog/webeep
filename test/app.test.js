@@ -11,11 +11,13 @@ let app;
 let baseUrl;
 let sentMessages;
 let sentReactions;
+let markedReads;
 let contactsDir;
 
 before(async () => {
   sentMessages = [];
   sentReactions = [];
+  markedReads = [];
   contactsDir = await mkdtemp(join(tmpdir(), 'beeper-web-test-'));
   app = createApp({ service: {
     async listChats() { return [{ id: 'chat-1', title: 'Family', type: 'group', participantPhoneNumbers: ['+15550101111', '+15550102222'], unreadCount: 2, preview: 'See you soon' }, { id: 'chat-2', title: '+1 (555) 010-2048', type: 'single', unreadCount: 0, preview: 'Call me back' }]; },
@@ -23,6 +25,7 @@ before(async () => {
     async listMessages(chatId, limit) { assert.equal(chatId, 'chat-1'); assert.equal(limit, 20); return [{ id: 'message-1', sender: 'Alex', text: 'Dinner at six?', reactions: [{ key: '❤️', participant: 'Alex' }], attachments: [{ assetURL: 'mxc://beeper.example/photo', type: 'img', fileName: 'photo.jpg', mimeType: 'image/jpeg' }], timestamp: '2026-09-20T12:00:00Z' }]; },
     async search(query, limit) { assert.equal(query, 'dinner'); assert.equal(limit, 10); return [{ id: 'message-1', chatId: 'chat-1', chatTitle: '', sender: 'Alex', text: 'Dinner at six?', timestamp: '2026-09-20T12:00:00Z' }]; },
     async sendText(input) { sentMessages.push(input); return { id: 'sent-1' }; },
+    async markRead(input) { markedReads.push(input); return input; },
     async sendReaction(input) { sentReactions.push({ reaction: input }); return input; },
     async removeReaction(input) { sentReactions.push({ unreact: input }); return input; },
     isAssetAllowed(url) { return url === 'mxc://beeper.example/photo' || url === 'file:///bridge/media/photo.jpg'; },
@@ -91,6 +94,11 @@ test('assets serve bridge-known URLs and refuse anything else', async () => {
   assert.equal(sneaky.status, 404); assert.deepEqual(await sneaky.json(), { error: 'not_found' });
   const garbage = await fetch(`${baseUrl}/api/assets?url=${encodeURIComponent('https://evil.example/photo.jpg')}`);
   assert.equal(garbage.status, 400); assert.deepEqual(await garbage.json(), { error: 'invalid_request' });
+});
+test('opening a chat marks it read', async () => {
+  const response = await fetch(`${baseUrl}/api/chats/chat-1/read`, { method: 'POST' });
+  assert.equal(response.status, 200); assert.deepEqual(await response.json(), { status: 'read', chatId: 'chat-1' });
+  assert.deepEqual(markedReads, [{ chatId: 'chat-1' }]);
 });
 test('message listing returns a thread for a valid chat id', async () => {
   const response = await fetch(`${baseUrl}/api/chats/chat-1/messages?limit=20`);

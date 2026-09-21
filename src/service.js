@@ -95,6 +95,10 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
     async serveAsset(url) {
       return client.assets.serve({ url });
     },
+    async markRead({ chatId }) {
+      await client.chats.markRead(chatId);
+      return { chatId };
+    },
     async sendText({ chatId, text, replyToMessageId, attachment }) {
       let attachmentParam;
       if (attachment) {
@@ -138,6 +142,11 @@ function inferAttachmentType(mimeType) {
 /** Deterministic local fixture; it never opens a network connection. */
 export function createMockService() {
   const chats = [{ id: 'chat-1', title: 'Family', type: 'group', unreadCount: 2, preview: 'Dinner at six?' }];
+  const markChatReadMock = (chatId) => {
+    const chat = chats.find((item) => item.id === chatId);
+    if (chat) chat.unreadCount = 0;
+    return { chatId };
+  };
   const messages = [
     { id: 'message-1', chatId: 'chat-1', sender: 'Alex', text: 'Dinner at six?', reactions: [{ key: '❤️', participant: 'Alex' }], timestamp: '2026-09-20T12:00:00.000Z' },
     { id: 'message-2', chatId: 'chat-1', sender: 'You', text: 'Yes, see you at six!', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:01:00.000Z' },
@@ -176,6 +185,9 @@ export function createMockService() {
       }
       messages.push(message);
       return { id: message.id };
+    },
+    async markRead({ chatId }) {
+      return markChatReadMock(chatId);
     },
     isAssetAllowed(url) {
       return messages.some((message) => (message.attachments ?? []).some((item) => item.assetURL === url));

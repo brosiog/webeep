@@ -592,9 +592,21 @@ async function loadThread(chat) {
   fileInput.value = '';
   renderAttachBar();
   await refreshSelectedThread({ initialLoad: true });
+  // Unconditional: the passed chat may carry a stale (or search-mapped) unread
+  // count, and the bridge call is cheap and idempotent.
+  await markChatRead(chat);
 }
 
-async function refreshSelectedThread({ initialLoad = false } = {}) {
+async function markChatRead(chat, { refresh = true } = {}) {
+  try {
+    await request(`/api/chats/${encodeURIComponent(chat.id)}/read`, { method: 'POST' });
+    if (refresh) await refreshChats({ quiet: true });
+  } catch {
+    // Badge state reconciles on the next poll.
+  }
+}
+
+async function refreshSelectedThread({ initialLoad = false, trackRead = false } = {}) {
   const chat = selectedChat;
   if (!chat) return;
   try {
@@ -608,6 +620,9 @@ async function refreshSelectedThread({ initialLoad = false } = {}) {
     renderMessages(data.items, fallbackSender, { stickToBottom: initialLoad || isNearMessageListBottom() });
     displayedMessageSignature = nextSignature;
     setStatus(threadStatus, '');
+    // New arrivals in the open, focused chat are seen: clear the badge without
+    // waiting for the next poll. Hidden tabs stay unread so they can notify.
+    if (!initialLoad && trackRead && document.hasFocus() && !document.hidden) void markChatRead(chat);
   } catch {
     if (initialLoad) setStatus(threadStatus, 'Unable to load messages.');
   }
@@ -649,7 +664,7 @@ async function pollForUpdates() {
       return;
     }
     if (!searchInput.value.trim()) await refreshChats({ quiet: true });
-    await refreshSelectedThread();
+    await refreshSelectedThread({ trackRead: true });
     if (!contactsView.hidden) await refreshContacts();
   } finally {
     pollInFlight = false;

@@ -168,6 +168,13 @@ export function createApp({ service, contacts = { async getLabelsForChats() { re
         return json(response, 200, { status: 'removed', ...(await service.removeReaction({ chatId, messageId, emoji })) });
       }
 
+      const readMatch = request.method === 'POST' && url.pathname.match(/^\/api\/chats\/([^/]+)\/read$/);
+      if (readMatch) {
+        const chatId = decodeURIComponent(readMatch[1]);
+        if (!chatId) return json(response, 400, { error: 'invalid_request' });
+        return json(response, 200, { status: 'read', ...(await service.markRead({ chatId })) });
+      }
+
       const sendMatch = request.method === 'POST' && url.pathname.match(/^\/api\/chats\/([^/]+)\/messages$/);
       if (sendMatch) {
         const body = await requireJsonBody(request, response, MAX_MESSAGE_BYTES);
