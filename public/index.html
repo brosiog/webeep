@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Beeper Web</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="sidebar" aria-label="Chats">
+      <div class="sidebar-header">
+        <h1>Beeper</h1>
+        <p id="unread-count" aria-live="polite">Unread: —</p>
+      </div>
+      <form id="search-form" class="search-form">
+        <label for="search-input">Search messages</label>
+        <div class="search-row">
+          <input id="search-input" name="q" type="search" maxlength="200" autocomplete="off">
+          <button type="submit">Search</button>
+        </div>
+      </form>
+      <p id="chat-status" class="status" role="status"></p>
+      <ul id="chat-list" class="chat-list" aria-label="Chat list"></ul>
+    </aside>
+
+    <section class="thread" aria-labelledby="thread-title">
+      <header class="thread-header">
+        <h2 id="thread-title">Select a chat</h2>
+      </header>
+      <p id="thread-status" class="status" role="status"></p>
+      <ol id="message-list" class="message-list" aria-live="polite"></ol>
+      <form id="send-form" class="send-form" hidden>
+        <label for="message-input">Message</label>
+        <div class="send-row">
+          <textarea id="message-input" rows="2" maxlength="4000" required></textarea>
+          <button type="submit">Send</button>
+        </div>
+        <p class="send-note">You will be asked to confirm before a message is sent.</p>
+      </form>
+    </section>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
