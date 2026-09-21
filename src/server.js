@@ -10,7 +10,7 @@ const app = createApp({
   contacts: createContactStore({ filePath: process.env.CONTACTS_FILE ?? `${process.cwd()}/data/contacts.json` }),
 });
 const apiServer = app.server.listeners('request')[0];
-const types = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const types = { '.css': 'text/css; charset=utf-8', '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg' };
 
 app.server.removeAllListeners('request');
 app.server.on('request', (request, response) => {

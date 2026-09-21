@@ -3,7 +3,7 @@
   color: #1c2333;
   background: #ffffff;
   color-scheme: light dark;
-  --bg-app: #ffffff;
+  --bg-app: #dfe9f5 url('./background-light.jpg') center / cover no-repeat fixed;
   --bg-rail: rgba(255, 255, 255, .8);
   --bg-rail-active: linear-gradient(180deg, #e6f1ff 0%, #cfe4fd 100%);
   --rail-text: #3c4763;
@@ -62,7 +62,7 @@
   :root {
     color: #e9eff8;
     background: #04060d;
-    --bg-app: linear-gradient(155deg, #04060d 0%, #0a1122 55%, #060a16 100%);
+    --bg-app: #04060d url('./background-dark.jpg') center / cover no-repeat fixed;
     --bg-rail: rgba(0, 0, 0, .72);
     --bg-rail-active: linear-gradient(180deg, rgba(46, 120, 220, .4) 0%, rgba(10, 100, 220, .32) 100%);
     --rail-text: #a7b4c9;
@@ -120,7 +120,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; overflow: hidden; background: var(--bg-app); background-attachment: fixed; }
+body { margin: 0; overflow: hidden; background: var(--bg-app); }
 button, input, textarea { font: inherit; }
 button { cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
