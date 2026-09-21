@@ -45,15 +45,6 @@ Bridge QR login and any OAuth authorization are user-performed steps in the Beep
 - `POST /api/chats/:chatId/messages/:messageId/reactions` with `{ "emoji" }`
 - `DELETE /api/chats/:chatId/messages/:messageId/reactions/:emoji`
 
-## Themes
-
-The gear button in the rail opens settings with a theme switcher:
-
-- **Aero** (default): glass panels, gradients, glow, and system light/dark via `prefers-color-scheme`.
-- **Minimal**: the original flat monochrome look, also with system light/dark support.
-
-The choice persists in `localStorage` (`beeper-theme`) and is applied before first paint, so there is no flash on reload. Both themes share the same UI and features; only presentation differs.
-
 ## Notifications
 
 The 🔔 button beside Refresh opts into notifications, which are checked on every poll:
