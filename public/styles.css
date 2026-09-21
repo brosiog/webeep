@@ -106,8 +106,9 @@ button { cursor: pointer; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .app-shell { display: grid; grid-template-columns: 88px minmax(280px, 360px) minmax(0, 1fr); height: 100dvh; overflow: hidden; }
 .utility-rail { display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 1.75rem 1rem; color: var(--rail-text); background: var(--bg-rail); }
-.brand { display: grid; width: 34px; grid-template-columns: repeat(3, 6px); gap: 4px; margin: .15rem 0 1.7rem; }
-.brand span { aspect-ratio: 1; border-radius: 50%; background: var(--rail-text); }
+.brand { display: grid; width: 44px; height: 44px; place-items: center; margin: .15rem 0 1.7rem; border-radius: 12px; color: var(--rail-text); }
+.brand:hover { background: var(--bg-rail-active); }
+.brand svg { display: block; width: 22px; height: 22px; }
 .rail-button { display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 12px; color: inherit; background: transparent; font-size: 1.25rem; }
 .rail-button svg { display: block; width: 22px; height: 22px; }
 .rail-button:hover, .rail-button.is-active { background: var(--bg-rail-active); }
