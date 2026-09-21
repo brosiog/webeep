@@ -8,7 +8,7 @@
   --bg-rail-active: linear-gradient(180deg, #e0f3fe 0%, #c6e6fd 100%);
   --rail-text: #3c4763;
   --rail-active-text: #0877c9;
-  --bg-sidebar: rgba(255, 255, 255, .85);
+  --bg-sidebar: rgba(255, 255, 255, .8);
   --bg-thread: rgba(255, 255, 255, .85);
   --bg-card: rgba(255, 255, 255, .8);
   --bg-input: rgba(255, 255, 255, .9);
@@ -51,7 +51,7 @@
   --unread-shadow: rgba(10, 165, 240, .45);
   --panel-shadow: 0 1px 2px rgba(20, 40, 80, .05), 0 16px 48px rgba(20, 40, 80, .1);
   --glass-inner: inset 0 1px 0 rgba(255, 255, 255, .9);
-  --frost-bar: rgba(255, 255, 255, .62);
+  --frost-bar: rgba(214, 232, 248, .62);
   --header-gloss: linear-gradient(180deg, rgba(255, 255, 255, .65), rgba(255, 255, 255, .12) 85%, transparent);
   --glow-avatar: 0 0 14px rgba(120, 200, 250, .45);
   --glow-own: 0 0 16px rgba(10, 165, 240, .28);
@@ -67,8 +67,8 @@
     --bg-rail-active: linear-gradient(180deg, rgba(60, 190, 250, .4) 0%, rgba(10, 165, 240, .32) 100%);
     --rail-text: #a7b4c9;
     --rail-active-text: #62ccff;
-    --bg-sidebar: rgba(0, 0, 0, .68);
-    --bg-thread: rgba(0, 0, 0, .68);
+    --bg-sidebar: rgba(0, 0, 0, .5);
+    --bg-thread: rgba(0, 0, 0, .5);
     --bg-card: rgba(12, 12, 15, .85);
     --bg-input: rgba(8, 8, 11, .9);
     --bg-hover: rgba(255, 255, 255, .06);
@@ -110,7 +110,7 @@
     --unread-shadow: rgba(10, 165, 240, .5);
     --panel-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 16px 48px rgba(0, 0, 0, .45);
     --glass-inner: inset 0 1px 0 rgba(255, 255, 255, .14);
-    --frost-bar: rgba(0, 0, 0, .55);
+    --frost-bar: rgba(0, 0, 0, .68);
     --header-gloss: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .015) 85%, transparent);
     --glow-avatar: 0 0 16px rgba(120, 205, 255, .35);
     --glow-own: 0 0 22px rgba(60, 190, 255, .42);
@@ -163,7 +163,6 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); }
 #notify-button svg { display: block; width: 1rem; height: 1rem; }
 .status { min-height: 1.1rem; margin: 0; padding: 0 1.25rem; color: var(--text-muted); font-size: .77rem; }
 #inbox-view, .contacts-view { display: flex; min-height: 0; flex: 1; flex-direction: column; }
-#inbox-view { background: var(--header-gloss), var(--frost-bar); backdrop-filter: blur(20px) saturate(1.8); -webkit-backdrop-filter: blur(20px) saturate(1.8); }
 .contacts-heading { padding: .5rem 1.25rem 1rem; } .contacts-heading p:last-child { margin: 0; color: var(--text-muted); font-size: .82rem; line-height: 1.4; }
 .contact-list { min-height: 0; margin: 0; padding: 0 .7rem 1rem; overflow-y: auto; list-style: none; }
 .contact-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .7rem; align-items: center; margin-bottom: .5rem; padding: .75rem .8rem; border: 1px solid var(--border); border-radius: 16px; background: var(--bg-card); box-shadow: var(--glass-inner), 0 1px 3px var(--shadow); }
