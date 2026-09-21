@@ -1,13 +1,13 @@
-/** True-winter pastel pairs: cool undertones only, no warm hues. */
+/** Wallpaper blues: sky, ice, aqua, and deep-water pairs. */
 export const AVATAR_GRADIENTS = [
-  ['#b8deff', '#86bcf3'], // icy blue
-  ['#ccd2ff', '#a3adf7'], // periwinkle
-  ['#c2ecdc', '#86d3ba'], // cool mint
-  ['#e0cdf7', '#bd9cec'], // ice lilac
-  ['#f7c6da', '#eba3c6'], // cool rose
-  ['#b0e4ec', '#79c6d8'], // frost
-  ['#d0e4f7', '#9ac1e8'], // powder blue
-  ['#d8d2f5', '#ada4ec'], // icy violet
+  ['#b8deff', '#7fbcf5'], // icy blue
+  ['#a8e0f5', '#6fb8ec'], // aqua mist
+  ['#b0e4ec', '#79c6d8'], // frost cyan
+  ['#9fd4f5', '#6aa9e8'], // spray
+  ['#c2d9f5', '#8fb4ec'], // periwinkle blue
+  ['#a3d9e8', '#6fb9d8'], // lagoon
+  ['#8fd0f0', '#5aa8e0'], // vivid sky
+  ['#b8e8f0', '#83c9e8'], // foam
 ];
 
 function avatarIndex(id) {

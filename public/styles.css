@@ -8,14 +8,14 @@
   --bg-rail-active: linear-gradient(180deg, #e0f3fe 0%, #c6e6fd 100%);
   --rail-text: #3c4763;
   --rail-active-text: #0877c9;
-  --bg-sidebar: rgba(255, 255, 255, .8);
+  --bg-sidebar: rgba(255, 255, 255, .62);
   --bg-thread: rgba(255, 255, 255, .85);
   --bg-card: rgba(255, 255, 255, .8);
   --bg-input: rgba(255, 255, 255, .9);
   --bg-hover: rgba(15, 40, 80, .06);
   --bg-selected: linear-gradient(180deg, #e2f3fe 0%, #cfe8fc 100%);
   --selected-bar: #0aa5f0;
-  --bg-bubble: linear-gradient(180deg, #f6f6f6 0%, #e9e9e9 55%, #dbdbdb 100%);
+  --bg-bubble: linear-gradient(180deg, #f0f6fd 0%, #dce9f7 55%, #c9def2 100%);
   --bg-bubble-own: linear-gradient(180deg, #d9ecff 0%, #b3d6fb 55%, #9dc9f9 100%);
   --bubble-own-text: #16233a;
   --bg-chip: rgba(255, 255, 255, .9);
@@ -67,7 +67,7 @@
     --bg-rail-active: linear-gradient(180deg, rgba(60, 190, 250, .4) 0%, rgba(10, 165, 240, .32) 100%);
     --rail-text: #a7b4c9;
     --rail-active-text: #62ccff;
-    --bg-sidebar: rgba(0, 0, 0, .72);
+    --bg-sidebar: rgba(0, 0, 0, .6);
     --bg-thread: rgba(0, 0, 0, .68);
     --bg-card: rgba(12, 12, 15, .85);
     --bg-input: rgba(8, 8, 11, .9);
