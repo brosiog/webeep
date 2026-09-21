@@ -166,7 +166,13 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); }
 .message.is-own { align-self: flex-end; border-radius: 14px 14px 3px; color: var(--bubble-own-text); background: var(--bg-bubble-own); }
 .message strong { color: var(--sender); font-size: .76rem; }
 .message.is-own strong { color: var(--sender-own); }
-.message p { min-width: 0; margin: .25rem 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.message-body { min-width: 0; margin: .25rem 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.message-body p, .message-body ul, .message-body ol, .message-body blockquote, .message-body pre { margin: .25rem 0; }
+.message-body ul, .message-body ol { padding-left: 1.25rem; }
+.message-body blockquote { padding-left: .6rem; border-left: 2px solid var(--border-strong); }
+.message-body pre { padding: .5rem .6rem; border: 1px solid var(--border); border-radius: 8px; white-space: pre-wrap; }
+.message-body code { font-size: .85em; }
+.message-body a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .message time { color: var(--time); font-size: .69rem; }
 .message.is-own time { color: var(--time-own); }
 .message-footer { display: flex; align-items: center; gap: .5rem; }

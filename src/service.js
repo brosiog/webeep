@@ -106,6 +106,7 @@ export function createMockService() {
     { id: 'message-1', chatId: 'chat-1', sender: 'Alex', text: 'Dinner at six?', reactions: [{ key: '❤️', participant: 'Alex' }], timestamp: '2026-09-20T12:00:00.000Z' },
     { id: 'message-2', chatId: 'chat-1', sender: 'You', text: 'Yes, see you at six!', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:01:00.000Z' },
     { id: 'message-3', chatId: 'chat-1', sender: 'Alex', text: '', type: 'REACTION', replyToMessageId: 'message-1', timestamp: '2026-09-20T12:02:00.000Z' },
+    { id: 'message-4', chatId: 'chat-1', sender: 'Cronjob Bot', text: 'Cronjob Response: Regal Mystery Monday movie<br>(job_id: 812d1dd2a500)<br><br><strong>Regal Mystery Movie — Monday, September 21, 2026</strong><br>• <strong>PG-13</strong>, <strong>1h 41m</strong><br><a href="https://www.regmovies.com/movies/heart-of-the-beast-ho00021867">https://www.regmovies.com/movies/heart-of-the-beast-ho00021867</a>', timestamp: '2026-09-20T12:03:00.000Z' },
   ];
   let nextId = 1;
   return {

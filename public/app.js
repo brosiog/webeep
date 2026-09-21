@@ -1,4 +1,5 @@
 import { createClientMessageId } from './client-message-id.js';
+import { plainTextSnippet, renderRichText } from './rich-text.js';
 
 const chatList = document.querySelector('#chat-list');
 const chatStatus = document.querySelector('#chat-status');
@@ -169,8 +170,7 @@ function messageSignature(messages) {
 }
 
 function snippet(text, max = 120) {
-  const normalized = (text ?? '').replace(/\s+/g, ' ').trim();
-  return normalized.length > max ? `${normalized.slice(0, max - 1)}…` : normalized;
+  return plainTextSnippet(text, max);
 }
 
 function setReplyTarget(target) {
@@ -351,8 +351,9 @@ function renderMessages(messages, fallbackSender, { stickToBottom = true } = {})
     if (message.sender === 'You') item.classList.add('is-own');
     const sender = document.createElement('strong');
     sender.textContent = message.sender || fallbackSender;
-    const text = document.createElement('p');
-    text.textContent = message.text || '';
+    const text = document.createElement('div');
+    text.className = 'message-body';
+    text.innerHTML = renderRichText(message.text || '');
     const time = document.createElement('time');
     time.dateTime = message.timestamp || '';
     time.textContent = formatTimestamp(message.timestamp);
