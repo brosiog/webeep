@@ -11,7 +11,6 @@ const searchInput = document.querySelector('#search-input');
 const sendForm = document.querySelector('#send-form');
 const messageInput = document.querySelector('#message-input');
 const refreshButton = document.querySelector('#refresh-button');
-const threadAvatar = document.querySelector('#thread-avatar');
 const sendButton = document.querySelector('.send-button');
 const inboxButton = document.querySelector('#inbox-button');
 const contactsButton = document.querySelector('#contacts-button');
@@ -55,9 +54,6 @@ function renderChats(chats) {
     if (chat.id === selectedChat?.id) button.classList.add('is-selected');
     button.dataset.chatId = chat.id;
     button.addEventListener('click', () => loadThread(chat));
-    const avatar = document.createElement('span');
-    avatar.className = 'chat-avatar';
-    avatar.textContent = (chat.title || 'U').trim().charAt(0).toUpperCase();
     const copy = document.createElement('span');
     copy.className = 'chat-copy';
     const title = document.createElement('span');
@@ -67,7 +63,7 @@ function renderChats(chats) {
     preview.className = 'preview';
     preview.textContent = chat.preview || '';
     copy.append(title, preview);
-    button.append(avatar, copy);
+    button.append(copy);
     if (chat.unreadCount) {
       const unread = document.createElement('span');
       unread.className = 'chat-unread';
@@ -85,9 +81,6 @@ function renderContacts(contacts) {
   for (const contact of contacts) {
     const item = document.createElement('li');
     item.className = 'contact-card';
-    const avatar = document.createElement('span');
-    avatar.className = 'chat-avatar';
-    avatar.textContent = (contact.name || contact.number).charAt(0).toUpperCase();
     const copy = document.createElement('div');
     copy.className = 'contact-copy';
     const number = document.createElement('span');
@@ -121,7 +114,7 @@ function renderContacts(contacts) {
       }
     });
     form.append(input, save);
-    item.append(avatar, copy, form);
+    item.append(copy, form);
     contactList.append(item);
   }
   if (contacts.length === 0) contactList.textContent = 'No number-only conversations yet.';
@@ -338,7 +331,6 @@ async function loadThread(chat) {
     button.classList.toggle('is-selected', button.dataset.chatId === chat.id);
   }
   threadTitle.textContent = chat.title || 'Untitled chat';
-  threadAvatar.textContent = (chat.title || 'B').trim().charAt(0).toUpperCase();
   sendForm.hidden = false;
   setStatus(threadStatus, 'Loading messages…');
   messageList.replaceChildren();
@@ -426,11 +418,17 @@ messageInput.addEventListener('input', () => {
   messageInput.style.height = `${Math.min(messageInput.scrollHeight, 140)}px`;
 });
 
+messageInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    sendForm.requestSubmit();
+  }
+});
+
 sendForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const text = messageInput.value.trim();
   if (!selectedChat || !text) return;
-  if (!window.confirm(`Send this message to ${selectedChat.title || 'this chat'}?`)) return;
   sendButton.disabled = true;
   setStatus(threadStatus, 'Sending…');
   try {

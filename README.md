@@ -46,4 +46,4 @@ Bridge QR login and any OAuth authorization are user-performed steps in the Beep
 
 Message projections include a `reactions` array (`[{ key, participant }]`) when the bridge reports reactions. The UI groups reactions by emoji; clicking a chip removes your reaction, and the 🙂 button opens a small emoji palette to add one.
 
-The UI asks for browser confirmation before it issues a text-send request.
+The UI sends immediately on Enter (Shift+Enter inserts a newline) and always sets `confirmed: true` on text-send requests.
