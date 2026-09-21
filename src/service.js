@@ -13,7 +13,7 @@ function reactionProjection(reaction, senderLabelByID = new Map()) {
   return projected;
 }
 
-function messageProjection(message, chatTitle = '', senderLabelByID = new Map(), fallbackSender = '') {
+function messageProjection(message, chatTitle = '', senderLabelByID = new Map(), fallbackSender = '', onAssetURL) {
   const attachments = (message.attachments ?? []).map((attachment) => {
     const projected = {
       assetURL: attachment.id ?? attachment.srcURL ?? '',
@@ -24,6 +24,7 @@ function messageProjection(message, chatTitle = '', senderLabelByID = new Map(),
     if (Number.isFinite(attachment.fileSize)) projected.fileSize = attachment.fileSize;
     if (Number.isFinite(attachment.duration)) projected.duration = attachment.duration;
     if (attachment.posterImg) projected.posterImg = attachment.posterImg;
+    if (projected.assetURL && typeof onAssetURL === 'function') onAssetURL(projected.assetURL);
     return projected;
   }).filter((attachment) => attachment.assetURL);
   const reactions = (message.reactions ?? []).map((reaction) => reactionProjection(reaction, senderLabelByID)).filter(Boolean);
@@ -44,7 +45,18 @@ function messageProjection(message, chatTitle = '', senderLabelByID = new Map(),
 /** Narrow application service backed by the official Beeper Desktop SDK. */
 export function createBeeperService({ accessToken, baseURL, client: providedClient }) {
   const client = providedClient ?? new BeeperDesktop({ accessToken, baseURL, logLevel: 'off', maxRetries: 0 });
+  // URLs the bridge recently handed us in a projection. file:// asset URLs reach
+  // into the bridge host filesystem, so only these may be served back.
+  const recentAssetURLs = [];
+  const recentAssetSet = new Set();
+  const trackAssetURL = (url) => {
+    if (recentAssetSet.has(url)) return;
+    recentAssetURLs.push(url);
+    recentAssetSet.add(url);
+    if (recentAssetURLs.length > 1000) recentAssetSet.delete(recentAssetURLs.shift());
+  };
   return {
+    isAssetAllowed(url) { return recentAssetSet.has(url); },
     async listChats() {
       const page = await client.chats.list();
       return page.items.slice(0, 50).map((chat) => ({
@@ -74,11 +86,11 @@ export function createBeeperService({ accessToken, baseURL, client: providedClie
       const fallbackSender = chat.type === 'single' ? chat.title : '';
       // The bridge echoes each reaction as a standalone REACTION message; those are
       // hidden here because reactions already surface as chips on the target message.
-      return page.items.filter((message) => message.type !== 'REACTION').slice(-limit).map((message) => messageProjection(message, '', senderLabelByID, fallbackSender));
+      return page.items.filter((message) => message.type !== 'REACTION').slice(-limit).map((message) => messageProjection(message, '', senderLabelByID, fallbackSender, trackAssetURL));
     },
     async search(query, limit) {
       const page = await client.messages.search({ query, limit });
-      return page.items.filter((message) => message.type !== 'REACTION').slice(0, limit).map((message) => messageProjection(message));
+      return page.items.filter((message) => message.type !== 'REACTION').slice(0, limit).map((message) => messageProjection(message, '', undefined, '', trackAssetURL));
     },
     async serveAsset(url) {
       return client.assets.serve({ url });
@@ -151,6 +163,9 @@ export function createMockService() {
       }
       messages.push(message);
       return { id: message.id };
+    },
+    isAssetAllowed(url) {
+      return messages.some((message) => (message.attachments ?? []).some((item) => item.assetURL === url));
     },
     async serveAsset(url) {
       const found = messages.flatMap((message) => message.attachments ?? []).find((item) => item.assetURL === url);

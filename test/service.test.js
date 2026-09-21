@@ -74,6 +74,8 @@ test('Beeper SDK pages use items and project bridge fields for the UI', async ()
   assert.deepEqual(await service.sendText({ chatId: 'chat-1', text: '', attachment: { fileName: 'photo.jpg', mimeType: 'image/jpeg', data: 'aGVsbG8=' } }), { id: 'pending-1' });
   assert.deepEqual(requests.find((request) => request.operation === 'upload').args, [{ content: 'aGVsbG8=', fileName: 'photo.jpg', mimeType: 'image/jpeg' }]);
   assert.deepEqual(requests.filter((request) => request.operation === 'send').at(-1).args, ['chat-1', { attachment: { uploadID: 'upload-1', fileName: 'photo.jpg', mimeType: 'image/jpeg' } }]);
+  assert.equal(service.isAssetAllowed('mxc://beeper.example/photo'), true);
+  assert.equal(service.isAssetAllowed('file:///root/.beeper/media/photo.jpg'), false);
   assert.deepEqual(await service.sendReaction({ chatId: 'chat-1', messageId: 'message-1', emoji: '❤️' }), { chatId: 'chat-1', messageId: 'message-1', emoji: '❤️' });
   assert.deepEqual(await service.removeReaction({ chatId: 'chat-1', messageId: 'message-1', emoji: '❤️' }), { chatId: 'chat-1', messageId: 'message-1', emoji: '❤️' });
   assert.deepEqual(requests.find((request) => request.operation === 'addReaction').args, ['message-1', { chatID: 'chat-1', reactionKey: '❤️' }]);

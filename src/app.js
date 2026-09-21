@@ -84,8 +84,8 @@ function validReactionKey(value) {
 function validAssetURL(value) {
   return typeof value === 'string'
     && value.length > 0
-    && value.length <= 2_048
-    && /^(?:mxc|localmxc):\/\//.test(value);
+    && value.length <= 4_096
+    && /^(?:mxc|localmxc|file):\/\//.test(value);
 }
 
 export function createApp({ service, contacts = { async getLabelsForChats() { return {}; }, async list() { return []; }, async setLabel() {} } }) {
@@ -107,6 +107,11 @@ export function createApp({ service, contacts = { async getLabelsForChats() { re
       if (request.method === 'GET' && url.pathname === '/api/assets') {
         const assetURL = url.searchParams.get('url');
         if (!validAssetURL(assetURL)) return json(response, 400, { error: 'invalid_request' });
+        // file:// URLs reach into the bridge host filesystem, so only serve ones
+        // the bridge itself handed us in a recent thread or search projection.
+        if (assetURL.startsWith('file:') && (typeof service.isAssetAllowed !== 'function' || !service.isAssetAllowed(assetURL))) {
+          return json(response, 404, { error: 'not_found' });
+        }
         const asset = await service.serveAsset(assetURL);
         if (!asset.ok) return json(response, asset.status || 502, { error: 'asset_unavailable' });
         const headers = {};

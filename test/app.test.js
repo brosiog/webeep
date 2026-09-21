@@ -25,6 +25,8 @@ before(async () => {
     async sendText(input) { sentMessages.push(input); return { id: 'sent-1' }; },
     async sendReaction(input) { sentReactions.push({ reaction: input }); return input; },
     async removeReaction(input) { sentReactions.push({ unreact: input }); return input; },
+    isAssetAllowed(url) { return url === 'mxc://beeper.example/photo' || url === 'file:///bridge/media/photo.jpg'; },
+    async serveAsset() { return { ok: true, status: 200, headers: new Map([['content-type', 'image/jpeg']]), body: new Blob(['fake-bytes']).stream() }; },
   }, contacts: createContactStore({ filePath: join(contactsDir, 'contacts.json') }) });
   await app.listen(0);
   baseUrl = `http://127.0.0.1:${app.port}`;
@@ -79,6 +81,16 @@ test('legacy chat-keyed labels resolve to the number used in message bubbles', a
 test('unread endpoint returns only a numeric total', async () => {
   const response = await fetch(`${baseUrl}/api/unread-count`);
   assert.equal(response.status, 200); assert.deepEqual(await response.json(), { total: 2 });
+});
+test('assets serve bridge-known URLs and refuse anything else', async () => {
+  const mxc = await fetch(`${baseUrl}/api/assets?url=${encodeURIComponent('mxc://beeper.example/photo')}`);
+  assert.equal(mxc.status, 200); assert.equal(await mxc.text(), 'fake-bytes');
+  const file = await fetch(`${baseUrl}/api/assets?url=${encodeURIComponent('file:///bridge/media/photo.jpg')}`);
+  assert.equal(file.status, 200); assert.equal(await file.text(), 'fake-bytes');
+  const sneaky = await fetch(`${baseUrl}/api/assets?url=${encodeURIComponent('file:///etc/beeper-web.env')}`);
+  assert.equal(sneaky.status, 404); assert.deepEqual(await sneaky.json(), { error: 'not_found' });
+  const garbage = await fetch(`${baseUrl}/api/assets?url=${encodeURIComponent('https://evil.example/photo.jpg')}`);
+  assert.equal(garbage.status, 400); assert.deepEqual(await garbage.json(), { error: 'invalid_request' });
 });
 test('message listing returns a thread for a valid chat id', async () => {
   const response = await fetch(`${baseUrl}/api/chats/chat-1/messages?limit=20`);
