@@ -1,4 +1,4 @@
-# Beeper Web
+# webeep
 
 A small browser UI for the local Beeper Desktop API bridge: your chats in a fast, frosted-glass web inbox. The Node backend exposes a narrow chat, unread-count, message-thread, search, and confirmed-text-send API; the browser uses only those endpoints.
 
