@@ -70,6 +70,32 @@ test('number contact history labels persist and are reflected in chats', async (
     await replacement.close();
   }
 });
+test('contacts optionally include the last message sent by each number', async () => {
+  const direct = createApp({ service: {
+    async listChats() { return [{ id: 'chat-9', title: '+1 (555) 010-9900', type: 'single', unreadCount: 0, preview: 'You: see you there' }]; },
+    async getUnreadCount() { return 0; },
+    async listMessages(chatId, limit) {
+      assert.equal(chatId, 'chat-9'); assert.equal(limit, 10);
+      return [
+        { id: 'm-1', sender: 'Derian', text: 'hey its Derian', timestamp: '2026-09-20T12:00:00Z' },
+        { id: 'm-2', sender: 'You', text: 'see you there', timestamp: '2026-09-20T12:05:00Z' },
+      ];
+    },
+    async search() { return []; }, async sendText() { return { id: 'sent-9' }; }, async sendReaction(input) { return input; }, async removeReaction(input) { return input; },
+  }, contacts: createContactStore({ filePath: join(contactsDir, 'contacts-with-last.json') }) });
+  await direct.listen(0);
+  try {
+    const directUrl = `http://127.0.0.1:${direct.port}`;
+    const plain = await fetch(`${directUrl}/api/contacts`);
+    assert.equal((await plain.json()).items[0].lastFromThem, undefined);
+    const enriched = await fetch(`${directUrl}/api/contacts?withLast=1`);
+    assert.deepEqual((await enriched.json()).items, [
+      { id: '+15550109900', chatId: 'chat-9', number: '+15550109900', name: '', preview: 'You: see you there', unreadCount: 0, lastFromThem: 'hey its Derian' },
+    ]);
+  } finally {
+    await direct.close();
+  }
+});
 test('stored number labels remain available when a number is no longer in recent history', async () => {
   const store = createContactStore({ filePath: join(contactsDir, 'labels-outside-history.json') });
   await store.setLabel('+15550109999', 'Taylor');

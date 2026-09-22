@@ -221,7 +221,7 @@ function renderContacts(contacts) {
     number.textContent = contact.number;
     const preview = document.createElement('span');
     preview.className = 'preview';
-    preview.textContent = contact.preview || 'No recent preview';
+    preview.textContent = plainTextSnippet(contact.lastFromThem || '') || contact.preview || 'No recent preview';
     copy.append(number, preview);
     const form = document.createElement('form');
     form.className = 'contact-form';
@@ -256,7 +256,7 @@ function renderContacts(contacts) {
 async function refreshContacts() {
   setStatus(contactsStatus, 'Loading number history…');
   try {
-    const data = await request('/api/contacts');
+    const data = await request('/api/contacts?withLast=1');
     renderContacts(data.items);
     setStatus(contactsStatus, '');
   } catch {
@@ -835,13 +835,27 @@ addButton.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => {
   const file = fileInput.files?.[0];
   if (!file) return;
-  if (file.size === 0 || file.size > MAX_ATTACHMENT_BYTES) {
+  acceptAttachmentFile(file);
+});
+
+function acceptAttachmentFile(file) {
+  fileInput.value = '';
+  if (!file || file.size === 0 || file.size > MAX_ATTACHMENT_BYTES) {
     setStatus(threadStatus, 'That file must be between 1 byte and 25 MB.');
-    fileInput.value = '';
-    return;
+    return false;
   }
   pendingAttachment = { file };
   renderAttachBar();
+  return true;
+}
+
+messageInput.addEventListener('paste', (event) => {
+  const clipboard = event.clipboardData;
+  const file = clipboard?.files?.[0]
+    ?? [...(clipboard?.items ?? [])].find((item) => item.kind === 'file')?.getAsFile();
+  if (!file) return;
+  event.preventDefault();
+  acceptAttachmentFile(file);
 });
 
 sendForm.addEventListener('submit', async (event) => {

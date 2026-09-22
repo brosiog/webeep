@@ -133,7 +133,23 @@ export function createApp({ service, contacts = { async getLabelsForChats() { re
         return Readable.fromWeb(asset.body).pipe(response);
       }
 
-      if (request.method === 'GET' && url.pathname === '/api/contacts') return json(response, 200, { items: await contacts.list(await service.listChats()) });
+      if (request.method === 'GET' && url.pathname === '/api/contacts') {
+        const items = await contacts.list(await service.listChats());
+        if (url.searchParams.get('withLast') === '1' && typeof service.listMessages === 'function') {
+          await Promise.all(items.filter((contact) => contact.chatId).map(async (contact) => {
+            try {
+              const messages = await service.listMessages(contact.chatId, 10);
+              const last = [...messages]
+                .sort((a, b) => new Date(b.timestamp).valueOf() - new Date(a.timestamp).valueOf())
+                .find((message) => message.sender !== 'You' && ((message.text ?? '').trim() || (message.attachments ?? []).length));
+              if (last) contact.lastFromThem = (last.text ?? '').trim() || '📎 Attachment';
+            } catch {
+              // Bridge lookup failed; the chat preview already on the contact stands in.
+            }
+          }));
+        }
+        return json(response, 200, { items });
+      }
       const contactMatch = request.method === 'PATCH' && url.pathname.match(/^\/api\/contacts\/([^/]+)$/);
       if (contactMatch) {
         const body = await requireJsonBody(request, response);
