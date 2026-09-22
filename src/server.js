@@ -1,8 +1,24 @@
-import { createReadStream, existsSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { createApp } from './app.js';
 import { createContactStore } from './contacts.js';
 import { createBeeperService, createMockService } from './service.js';
+
+// Convenience for `npm start`: fill unset variables from ./.env when present.
+// Systemd deployments use EnvironmentFile instead; the real environment wins.
+try {
+  for (const line of readFileSync(join(process.cwd(), '.env'), 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const index = trimmed.indexOf('=');
+    if (index < 1) continue;
+    const key = trimmed.slice(0, index).trim();
+    const value = trimmed.slice(index + 1).trim().replace(/^(['"])(.*)\1$/, '$2');
+    if (key && process.env[key] === undefined) process.env[key] = value;
+  }
+} catch {
+  // No .env file; values must come from the environment.
+}
 
 const publicDir = new URL('../public/', import.meta.url).pathname;
 const app = createApp({

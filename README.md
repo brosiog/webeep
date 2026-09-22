@@ -1,19 +1,22 @@
 # Beeper Web
 
-A small, dependency-free browser UI for the local Beeper Desktop API bridge. The Node backend exposes a narrow chat, unread-count, message-thread, search, and confirmed-text-send API; the browser uses only those endpoints.
+A small browser UI for the local Beeper Desktop API bridge: your chats in a fast, frosted-glass web inbox. The Node backend exposes a narrow chat, unread-count, message-thread, search, and confirmed-text-send API; the browser uses only those endpoints.
 
-## Run locally
+## Quick start
 
-Requirements: Node.js 20 or later and a configured local Beeper Desktop API bridge.
+Requirements: Node.js 20 or later and Beeper Desktop with its Desktop API enabled.
 
 ```sh
-cp .env.example .env
-# Set BEEPER_ACCESS_TOKEN and BEEPER_BASE_URL in .env through your local deployment process.
-set -a; . ./.env; set +a
-npm start
+git clone https://github.com/brosiog/webeep.git
+cd webeep
+./setup.sh
 ```
 
-The backend defaults to `127.0.0.1:3000`. For an isolated UI demonstration that does not contact a bridge, set `BEEPER_MODE=mock` before starting.
+The wizard checks your Node version, installs dependencies, walks you through creating a Beeper Desktop access token (Settings → Integrations → + under Approved connections), saves everything to `.env`, verifies the bridge answers, and opens the app at `http://localhost:3000`. Leave that terminal running while you chat; start it again later with `npm start`.
+
+Prefer to do it by hand? Copy `.env.example` to `.env`, fill in `BEEPER_ACCESS_TOKEN` and `BEEPER_BASE_URL`, then `npm start` (the server reads `.env` automatically).
+
+Just looking around with no bridge? For an isolated UI demonstration that does not contact a bridge, set `BEEPER_MODE=mock` before starting.
 
 ```sh
 BEEPER_MODE=mock npm start
@@ -57,4 +60,4 @@ Only genuinely new arrivals notify: opening a chat marks its messages seen, and 
 
 Message projections include a `reactions` array (`[{ key, participant }]`) when the bridge reports reactions, and a `replyToMessageId` when the message is a reply. Standalone `REACTION` echo messages from the bridge are hidden from threads and search, since their emoji already appears as a chip on the target message. The UI renders quoted context above replies (click to jump to the original) and a ↩ button on each message to reply with a quoted preview bar. The UI groups reactions by emoji; clicking a chip removes your reaction, and the 🙂 button opens a small emoji palette to add one.
 
-The UI sends immediately on Enter (Shift+Enter inserts a newline) and always sets `confirmed: true` on text-send requests.
+The UI sends immediately on Enter (Shift+Enter inserts a newline) and always sets `confirmed: true` on text-send requests. Attach a file with the + button or by pasting it into the message box (up to 25 MB).
